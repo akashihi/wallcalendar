@@ -1,0 +1,7 @@
+name: WallCalendar
+
+dependencies:
+  - python=3.9
+  - requests=2.26.0
+  - opencv=4.5.*
+  - numpy
