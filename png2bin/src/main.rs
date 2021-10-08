@@ -22,14 +22,26 @@
 use clap::{AppSettings, Clap};
 use std::fs::{DirEntry, File, OpenOptions};
 use humansize::{FileSize, file_size_opts as options};
-use png::{ColorType, BitDepth};
+use png::{ColorType, BitDepth, OutputInfo};
 use bit_field::BitField;
 use lzss::{Lzss, SliceReader, VecWriter};
 use byteorder::{LittleEndian, WriteBytesExt};
 use std::io::Write;
+use anyhow::{Result, Context};
+use thiserror::Error;
 
 #[macro_use]
 extern crate log;
+
+#[derive(Error, Debug)]
+enum ConversionError {
+    #[error("Path can not be converted to string")]
+    UnprocessablePath,
+    #[error("File is not a Grayscale image")]
+    NotGrayscale,
+    #[error("File is not a 8-bit image")]
+    NotEightBit
+}
 
 #[derive(Clap)]
 #[clap(version = "1.0", author = "Denis Chaplygin <akashihi@gmail.com>")]
@@ -41,48 +53,63 @@ struct Opts {
 
 type MyLzss = Lzss<10, 4, 0x20, { 1 << 10 }, { 2 << 10 }>;
 
-fn compress_image(input: DirEntry) {
-    let basename = input.path().file_name().and_then(|f| f.to_str()).map(|s| s.to_owned()).unwrap();
+fn validate_image(image: &OutputInfo) -> Result<bool> {
+    if image.color_type != ColorType::Grayscale {
+        Err(ConversionError::NotGrayscale.into())
+    } else if image.bit_depth != BitDepth::Eight {
+        Err(ConversionError::NotEightBit.into())
+    } else {
+        Ok(true)
+    }
+}
 
-    let decoder = png::Decoder::new(File::open(input.path()).unwrap());
-    let mut reader = decoder.read_info().unwrap();
+fn allocate_bitstream(image: &OutputInfo) -> Vec<u8> {
+    let image_size = image.width*image.height;
+    let bitstream_size = if image_size%8 == 0 {
+        (image_size/8) as usize
+    } else {
+        (image_size/8+1) as usize
+    };
+    let mut bitstream = Vec::with_capacity(bitstream_size);
+    bitstream.resize(bitstream_size, 0xFF_u8);
+    bitstream
+}
+
+fn compress_image(input: DirEntry) -> Result<()>{
+    let basename = input.path().file_name().and_then(|f| f.to_str()).map(|s| s.to_owned()).ok_or(ConversionError::UnprocessablePath)?;
+
+    let decoder = png::Decoder::new(File::open(input.path())?);
+    let mut reader = decoder.read_info()?;
     let mut buf = vec![0; reader.output_buffer_size()];
-    let image = reader.next_frame(&mut buf).unwrap();
+    let image = reader.next_frame(&mut buf)?;
     let bytes = &buf[..image.buffer_size()];
 
-    if image.color_type != ColorType::Grayscale || image.bit_depth != BitDepth::Eight {
-        panic!("{}: Only 8-bit grayscale images are supported! ({:?}, {:?})", basename, image.color_type, image.bit_depth)
-    }
+    validate_image(&image)?;
+    let mut bitstream= allocate_bitstream(&image);
 
     let width = image.width;
     let height = image.height;
 
-    let bitstream_size = if (width*height/8)%8 == 0 {
-        (width*height/8) as usize
-    } else {
-        (width*height/8+1) as usize
-    };
-    let mut bitstream = Vec::with_capacity(bitstream_size);
-    bitstream.resize(bitstream_size, 0xFF_u8);
 
-    for byte in 0..bitstream_size {
+    for byte in 0..bitstream.len() {
         for bit in 0..8 {
             let image_index = byte*8+bit;
             bitstream[byte].set_bit(bit, bytes[image_index]>0);
         }
     }
     let compressed = VecWriter::with_capacity(32_768);
-    let compressed_bytes = MyLzss::compress(SliceReader::new(&bitstream), compressed).unwrap();
+    let compressed_bytes = MyLzss::compress(SliceReader::new(&bitstream), compressed)?;
 
     let mut output_filename = input.path().clone();
     output_filename.set_extension("bin");
-    let mut output = OpenOptions::new().create(true).truncate(true).write(true).open(output_filename).unwrap();
-    output.write_u16::<LittleEndian>(compressed_bytes.len() as u16).unwrap();
-    output.write_all(&compressed_bytes).unwrap();
-    output.flush().unwrap();
+    let mut output = OpenOptions::new().create(true).truncate(true).write(true).open(output_filename)?;
+    output.write_u16::<LittleEndian>(compressed_bytes.len() as u16)?;
+    output.write_all(&compressed_bytes)?;
+    output.flush()?;
 
-    let file_size = input.path().metadata().unwrap().len();
-    info!("{} {}x{}, PNG: {}, BIN: {}, compressed: {}", basename, width, height, file_size.file_size(options::CONVENTIONAL).unwrap(), bitstream_size.file_size(options::CONVENTIONAL).unwrap(), compressed_bytes.len().file_size(options::CONVENTIONAL).unwrap())
+    let file_size = input.path().metadata()?.len();
+    info!("{} {}x{}, PNG: {}, BIN: {}", basename, width, height, file_size.file_size(options::CONVENTIONAL).unwrap_or("Unknown".to_string()), compressed_bytes.len().file_size(options::CONVENTIONAL).unwrap_or("Unknown".to_string()));
+    Ok(())
 }
 
 fn main() {
@@ -94,15 +121,14 @@ fn main() {
     let opts: Opts = Opts::parse();
     info!("Input directory: {}", opts.input);
 
-    let files = std::fs::read_dir(opts.input).unwrap()
+    std::fs::read_dir(opts.input).unwrap()
         .filter(|f|
             f.as_ref().map(|name| name.file_name().to_str()
                 .map(|s| s.to_lowercase())
                 .map(|s| s.ends_with(".png"))
                 .unwrap_or(false))
                 .unwrap_or(false))
-        .collect::<Result<Vec<_>, std::io::Error>>().unwrap();
-    for file in files {
-        compress_image(file)
-    }
+        .map(|file| file.context("File access").and_then(compress_image))
+        .filter(|r| r.is_err())
+        .for_each(|e| error!("{}", e.err().unwrap()));
 }
