@@ -85,7 +85,7 @@ fn read_png(input: &DirEntry) -> Result<(Vec<u8>, OutputInfo)> {
 }
 
 fn write_bin(input: &DirEntry, data: &[u8]) -> Result<()> {
-    let mut output_filename = input.path().clone();
+    let mut output_filename = input.path();
     output_filename.set_extension("bin");
     let mut output = OpenOptions::new()
         .create(true)
@@ -93,7 +93,7 @@ fn write_bin(input: &DirEntry, data: &[u8]) -> Result<()> {
         .write(true)
         .open(output_filename)?;
     output.write_u16::<LittleEndian>(data.len() as u16)?;
-    output.write_all(&data)?;
+    output.write_all(data)?;
     output.flush().context("Bin output")
 }
 
@@ -110,10 +110,10 @@ fn compress_image(input: DirEntry) -> Result<()> {
     validate_image(&image)?;
     let mut bitstream = allocate_bitstream(&image);
 
-    for byte in 0..bitstream.len() {
+    for (byte_no, byte) in bitstream.iter_mut().enumerate() {
         for bit in 0..8 {
-            let image_index = byte * 8 + bit;
-            bitstream[byte].set_bit(bit, bytes[image_index] > 0);
+            let image_index = byte_no * 8 + bit;
+            byte.set_bit(bit, bytes[image_index] > 0);
         }
     }
     let compressed = VecWriter::with_capacity(32_768);
@@ -129,11 +129,11 @@ fn compress_image(input: DirEntry) -> Result<()> {
         image.height,
         file_size
             .file_size(options::CONVENTIONAL)
-            .unwrap_or("Unknown".to_string()),
+            .unwrap_or_else(|_| "Unknown".to_string()),
         compressed_bytes
             .len()
             .file_size(options::CONVENTIONAL)
-            .unwrap_or("Unknown".to_string())
+            .unwrap_or_else(|_| "Unknown".to_string())
     );
     Ok(())
 }
