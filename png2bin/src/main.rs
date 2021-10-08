@@ -75,21 +75,31 @@ fn allocate_bitstream(image: &OutputInfo) -> Vec<u8> {
     bitstream
 }
 
-fn compress_image(input: DirEntry) -> Result<()>{
-    let basename = input.path().file_name().and_then(|f| f.to_str()).map(|s| s.to_owned()).ok_or(ConversionError::UnprocessablePath)?;
-
+fn read_png(input: &DirEntry) -> Result<(Vec<u8>, OutputInfo)> {
     let decoder = png::Decoder::new(File::open(input.path())?);
     let mut reader = decoder.read_info()?;
     let mut buf = vec![0; reader.output_buffer_size()];
     let image = reader.next_frame(&mut buf)?;
-    let bytes = &buf[..image.buffer_size()];
+    buf.truncate(image.buffer_size());
+    Ok((buf, image))
+}
+
+fn write_bin(input: &DirEntry, data: &[u8]) -> Result<()> {
+    let mut output_filename = input.path().clone();
+    output_filename.set_extension("bin");
+    let mut output = OpenOptions::new().create(true).truncate(true).write(true).open(output_filename)?;
+    output.write_u16::<LittleEndian>(data.len() as u16)?;
+    output.write_all(&data)?;
+    output.flush().context("Bin output")
+}
+
+fn compress_image(input: DirEntry) -> Result<()>{
+    let basename = input.path().file_name().and_then(|f| f.to_str()).map(|s| s.to_owned()).ok_or(ConversionError::UnprocessablePath)?;
+
+    let (bytes, image) = read_png(&input)?;
 
     validate_image(&image)?;
     let mut bitstream= allocate_bitstream(&image);
-
-    let width = image.width;
-    let height = image.height;
-
 
     for byte in 0..bitstream.len() {
         for bit in 0..8 {
@@ -100,15 +110,10 @@ fn compress_image(input: DirEntry) -> Result<()>{
     let compressed = VecWriter::with_capacity(32_768);
     let compressed_bytes = MyLzss::compress(SliceReader::new(&bitstream), compressed)?;
 
-    let mut output_filename = input.path().clone();
-    output_filename.set_extension("bin");
-    let mut output = OpenOptions::new().create(true).truncate(true).write(true).open(output_filename)?;
-    output.write_u16::<LittleEndian>(compressed_bytes.len() as u16)?;
-    output.write_all(&compressed_bytes)?;
-    output.flush()?;
+    write_bin(&input, &compressed_bytes)?;
 
     let file_size = input.path().metadata()?.len();
-    info!("{} {}x{}, PNG: {}, BIN: {}", basename, width, height, file_size.file_size(options::CONVENTIONAL).unwrap_or("Unknown".to_string()), compressed_bytes.len().file_size(options::CONVENTIONAL).unwrap_or("Unknown".to_string()));
+    info!("{} {}x{}, PNG: {}, BIN: {}", basename, image.width, image.height, file_size.file_size(options::CONVENTIONAL).unwrap_or("Unknown".to_string()), compressed_bytes.len().file_size(options::CONVENTIONAL).unwrap_or("Unknown".to_string()));
     Ok(())
 }
 
