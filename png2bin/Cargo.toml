@@ -7,3 +7,10 @@ edition = "2018"
 
 [dependencies]
 clap="3.0.0-beta.4"
+log="0.4.14"
+pretty_env_logger = "0.4.0"
+png = "0.17.1"
+humansize = "1.1.1"
+bit_field="0.10.1"
+lzss = "0.8.2"
+byteorder = "1.4.3"
