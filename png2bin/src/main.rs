@@ -19,15 +19,15 @@
 //! Pay attention, that we do not store image dimension, as they are standardized
 //! and are well known by the firmware.
 
-use clap::{AppSettings, Clap};
-use std::fs::{DirEntry, File, OpenOptions};
-use humansize::{FileSize, file_size_opts as options};
-use png::{ColorType, BitDepth, OutputInfo};
+use anyhow::{Context, Result};
 use bit_field::BitField;
-use lzss::{Lzss, SliceReader, VecWriter};
 use byteorder::{LittleEndian, WriteBytesExt};
+use clap::{AppSettings, Clap};
+use humansize::{file_size_opts as options, FileSize};
+use lzss::{Lzss, SliceReader, VecWriter};
+use png::{BitDepth, ColorType, OutputInfo};
+use std::fs::{DirEntry, File, OpenOptions};
 use std::io::Write;
-use anyhow::{Result, Context};
 use thiserror::Error;
 
 #[macro_use]
@@ -40,7 +40,7 @@ enum ConversionError {
     #[error("File is not a Grayscale image")]
     NotGrayscale,
     #[error("File is not a 8-bit image")]
-    NotEightBit
+    NotEightBit,
 }
 
 #[derive(Clap)]
@@ -64,11 +64,11 @@ fn validate_image(image: &OutputInfo) -> Result<bool> {
 }
 
 fn allocate_bitstream(image: &OutputInfo) -> Vec<u8> {
-    let image_size = image.width*image.height;
-    let bitstream_size = if image_size%8 == 0 {
-        (image_size/8) as usize
+    let image_size = image.width * image.height;
+    let bitstream_size = if image_size % 8 == 0 {
+        (image_size / 8) as usize
     } else {
-        (image_size/8+1) as usize
+        (image_size / 8 + 1) as usize
     };
     let mut bitstream = Vec::with_capacity(bitstream_size);
     bitstream.resize(bitstream_size, 0xFF_u8);
@@ -87,24 +87,33 @@ fn read_png(input: &DirEntry) -> Result<(Vec<u8>, OutputInfo)> {
 fn write_bin(input: &DirEntry, data: &[u8]) -> Result<()> {
     let mut output_filename = input.path().clone();
     output_filename.set_extension("bin");
-    let mut output = OpenOptions::new().create(true).truncate(true).write(true).open(output_filename)?;
+    let mut output = OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(output_filename)?;
     output.write_u16::<LittleEndian>(data.len() as u16)?;
     output.write_all(&data)?;
     output.flush().context("Bin output")
 }
 
-fn compress_image(input: DirEntry) -> Result<()>{
-    let basename = input.path().file_name().and_then(|f| f.to_str()).map(|s| s.to_owned()).ok_or(ConversionError::UnprocessablePath)?;
+fn compress_image(input: DirEntry) -> Result<()> {
+    let basename = input
+        .path()
+        .file_name()
+        .and_then(|f| f.to_str())
+        .map(|s| s.to_owned())
+        .ok_or(ConversionError::UnprocessablePath)?;
 
     let (bytes, image) = read_png(&input)?;
 
     validate_image(&image)?;
-    let mut bitstream= allocate_bitstream(&image);
+    let mut bitstream = allocate_bitstream(&image);
 
     for byte in 0..bitstream.len() {
         for bit in 0..8 {
-            let image_index = byte*8+bit;
-            bitstream[byte].set_bit(bit, bytes[image_index]>0);
+            let image_index = byte * 8 + bit;
+            bitstream[byte].set_bit(bit, bytes[image_index] > 0);
         }
     }
     let compressed = VecWriter::with_capacity(32_768);
@@ -113,7 +122,19 @@ fn compress_image(input: DirEntry) -> Result<()>{
     write_bin(&input, &compressed_bytes)?;
 
     let file_size = input.path().metadata()?.len();
-    info!("{} {}x{}, PNG: {}, BIN: {}", basename, image.width, image.height, file_size.file_size(options::CONVENTIONAL).unwrap_or("Unknown".to_string()), compressed_bytes.len().file_size(options::CONVENTIONAL).unwrap_or("Unknown".to_string()));
+    info!(
+        "{} {}x{}, PNG: {}, BIN: {}",
+        basename,
+        image.width,
+        image.height,
+        file_size
+            .file_size(options::CONVENTIONAL)
+            .unwrap_or("Unknown".to_string()),
+        compressed_bytes
+            .len()
+            .file_size(options::CONVENTIONAL)
+            .unwrap_or("Unknown".to_string())
+    );
     Ok(())
 }
 
@@ -126,13 +147,19 @@ fn main() {
     let opts: Opts = Opts::parse();
     info!("Input directory: {}", opts.input);
 
-    std::fs::read_dir(opts.input).unwrap()
-        .filter(|f|
-            f.as_ref().map(|name| name.file_name().to_str()
-                .map(|s| s.to_lowercase())
-                .map(|s| s.ends_with(".png"))
-                .unwrap_or(false))
-                .unwrap_or(false))
+    std::fs::read_dir(opts.input)
+        .unwrap()
+        .filter(|f| {
+            f.as_ref()
+                .map(|name| {
+                    name.file_name()
+                        .to_str()
+                        .map(|s| s.to_lowercase())
+                        .map(|s| s.ends_with(".png"))
+                        .unwrap_or(false)
+                })
+                .unwrap_or(false)
+        })
         .map(|file| file.context("File access").and_then(compress_image))
         .filter(|r| r.is_err())
         .for_each(|e| error!("{}", e.err().unwrap()));
