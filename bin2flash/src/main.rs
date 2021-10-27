@@ -52,7 +52,7 @@ struct Opts {
     input: String,
     /// Generate smaller flash image for debug purposes
     #[clap(short, long)]
-    simple: bool,
+    short: bool,
 }
 
 fn add_file_to_flash(fname: &Path, offset: u32, entries_directory: &mut[u32], directory_index: usize, output_file: &mut File) -> Result<u32> {
@@ -134,7 +134,7 @@ fn main() {
             if m==2 && d>29 {
                 continue
             }
-            if m < 2 || !opts.simple {
+            if m < 2 || !opts.short {
                 let a_black_fname: PathBuf = [&opts.input, "data", &format!("{:02}-{:02}-a-black.bin", m, d)].iter().collect();
                 offset = add_file_to_flash(&a_black_fname, offset, &mut entries_directory, directory_index, &mut output_file).unwrap();
                 directory_index+=1;
