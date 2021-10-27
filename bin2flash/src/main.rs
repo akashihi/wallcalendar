@@ -134,23 +134,31 @@ fn main() {
             if m==2 && d>29 {
                 continue
             }
-            let a_black_fname: PathBuf = [&opts.input, "data", &format!("{:02}-{:02}-a-black.bin", m, d)].iter().collect();
-            offset = add_file_to_flash(&a_black_fname, offset, &mut entries_directory, directory_index, &mut output_file).unwrap();
-            directory_index+=1;
+            if m < 2 || !opts.simple {
+                let a_black_fname: PathBuf = [&opts.input, "data", &format!("{:02}-{:02}-a-black.bin", m, d)].iter().collect();
+                offset = add_file_to_flash(&a_black_fname, offset, &mut entries_directory, directory_index, &mut output_file).unwrap();
+                directory_index+=1;
 
 
-            let a_red_fname: PathBuf = [&opts.input, "data", &format!("{:02}-{:02}-a-red.bin", m, d)].iter().collect();
-            if a_red_fname.exists() {
-                offset = add_file_to_flash(&a_red_fname, offset, &mut entries_directory, directory_index, &mut output_file).unwrap();
+                let a_red_fname: PathBuf = [&opts.input, "data", &format!("{:02}-{:02}-a-red.bin", m, d)].iter().collect();
+                if a_red_fname.exists() {
+                    offset = add_file_to_flash(&a_red_fname, offset, &mut entries_directory, directory_index, &mut output_file).unwrap();
+                    directory_index+=1;
+                } else {
+                    entries_directory[directory_index] = 0;
+                    directory_index+=1;
+                }
+
+                let b_fname: PathBuf = [&opts.input, "data", &format!("{:02}-{:02}-b.bin", m, d)].iter().collect();
+                offset = add_file_to_flash(&b_fname, offset, &mut entries_directory, directory_index, &mut output_file).unwrap();
                 directory_index+=1;
             } else {
-                entries_directory[directory_index] = 0;
-                directory_index+=1;
+                //Only first month is filled in the simple mode and it's index starts with 8 + 7 + 12 + 10 + 10 = 47th item
+                entries_directory[directory_index] = entries_directory[47+d]; //A black
+                entries_directory[directory_index+1] = entries_directory[47+d+1]; //A Red
+                entries_directory[directory_index+2] = entries_directory[47+d+2]; //B side
+                directory_index+=3;
             }
-
-            let b_fname: PathBuf = [&opts.input, "data", &format!("{:02}-{:02}-b.bin", m, d)].iter().collect();
-            offset = add_file_to_flash(&b_fname, offset, &mut entries_directory, directory_index, &mut output_file).unwrap();
-            directory_index+=1;
         }
     }
 
