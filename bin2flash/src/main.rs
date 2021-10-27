@@ -34,12 +34,13 @@
 //! exactly after directory
 //!
 
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use byteorder::{BigEndian, WriteBytesExt};
 use clap::{Parser};
 use humansize::{file_size_opts as options, FileSize};
+use anyhow::Result;
 
 #[macro_use]
 extern crate log;
@@ -54,6 +55,26 @@ struct Opts {
     simple: bool,
 }
 
+fn add_file_to_flash(fname: &Path, offset: u32, entries_directory: &mut[u32], directory_index: usize, output_file: &mut File) -> Result<u32> {
+    info!("{}, size: {}", fname.as_os_str().to_str().unwrap(),
+            fname.metadata().unwrap().len().
+            file_size(options::CONVENTIONAL).unwrap_or_else(|_| "Unknown".to_string()));
+    let bytes = std::fs::read(fname).unwrap();
+    entries_directory[directory_index] = offset;
+    output_file.write_all(&bytes).unwrap();
+    Ok(offset + bytes.len() as u32)
+}
+
+fn dump_directory(output_file: &mut File, entries_directory: &[u32]) -> Result<u32> {
+    let mut offset = 0;
+    output_file.seek(SeekFrom::Start(0))?;
+    for entry in entries_directory {
+        output_file.write_u32::<BigEndian>(*entry)?;
+        offset += 4;
+    };
+    Ok(offset)
+}
+
 fn main() {
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "info")
@@ -64,109 +85,63 @@ fn main() {
     info!("Input directory: {}", opts.input);
 
     let mut entries_directory: [u32; 1145] = [0; 1145];
-    let mut offset = 0;
     let mut directory_index=0;
 
     let mut output_file = OpenOptions::new().write(true).create(true).truncate(true).open("spiflash.bin").unwrap();
-    output_file.seek(SeekFrom::Start(0)).unwrap();
-    for entry in entries_directory {
-        output_file.write_u32::<BigEndian>(entry).unwrap();
-        offset += 4;
-    }
+    let mut offset = dump_directory(&mut output_file, &entries_directory).unwrap();
 
     //Add Big Digits
     for i in 0..10 {
         let digit_fname: PathBuf = [&opts.input, "big_digits", &format!("{}.bin", i)].iter().collect();
-        info!("{}, size: {}", digit_fname.as_os_str().to_str().unwrap(),
-            digit_fname.metadata().unwrap().len().
-            file_size(options::CONVENTIONAL).unwrap_or_else(|_| "Unknown".to_string()));
-        let bytes = std::fs::read(digit_fname).unwrap();
-        entries_directory[directory_index] = offset;
-        output_file.write_all(&bytes).unwrap();
-        offset += bytes.len() as u32;
+        offset = add_file_to_flash(&digit_fname, offset, &mut entries_directory, directory_index, &mut output_file).unwrap();
         directory_index+=1;
     }
 
     //Add Small Digits
     for i in 0..10 {
         let digit_fname: PathBuf = [&opts.input, "small_digits", &format!("{}.bin", i)].iter().collect();
-        info!("{}, size: {}", digit_fname.as_os_str().to_str().unwrap(),
-            digit_fname.metadata().unwrap().len().
-            file_size(options::CONVENTIONAL).unwrap_or_else(|_| "Unknown".to_string()));
-        let bytes = std::fs::read(digit_fname).unwrap();
-        entries_directory[directory_index] = offset;
-        output_file.write_all(&bytes).unwrap();
-        offset += bytes.len() as u32;
+        offset = add_file_to_flash(&digit_fname, offset, &mut entries_directory, directory_index, &mut output_file).unwrap();
         directory_index+=1;
     }
 
     //Add months
     for name in ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"] {
-        let digit_fname: PathBuf = [&opts.input, "months", &format!("{}.bin", name)].iter().collect();
-        info!("{}, size: {}", digit_fname.as_os_str().to_str().unwrap(),
-            digit_fname.metadata().unwrap().len().
-            file_size(options::CONVENTIONAL).unwrap_or_else(|_| "Unknown".to_string()));
-        let bytes = std::fs::read(digit_fname).unwrap();
-        entries_directory[directory_index] = offset;
-        output_file.write_all(&bytes).unwrap();
-        offset += bytes.len() as u32;
+        let month_fname: PathBuf = [&opts.input, "months", &format!("{}.bin", name)].iter().collect();
+        offset = add_file_to_flash(&month_fname, offset, &mut entries_directory, directory_index, &mut output_file).unwrap();
         directory_index+=1;
     }
 
     //Add weekdays
     for name in ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] {
-        let digit_fname: PathBuf = [&opts.input, "weekdays", &format!("{}.bin", name)].iter().collect();
-        info!("{}, size: {}", digit_fname.as_os_str().to_str().unwrap(),
-            digit_fname.metadata().unwrap().len().
-            file_size(options::CONVENTIONAL).unwrap_or_else(|_| "Unknown".to_string()));
-        let bytes = std::fs::read(digit_fname).unwrap();
-        entries_directory[directory_index] = offset;
-        output_file.write_all(&bytes).unwrap();
-        offset += bytes.len() as u32;
+        let weekday_fname: PathBuf = [&opts.input, "weekdays", &format!("{}.bin", name)].iter().collect();
+        offset = add_file_to_flash(&weekday_fname, offset, &mut entries_directory, directory_index, &mut output_file).unwrap();
         directory_index+=1;
     }
 
     //Add moon phases
     for i in 1..9 {
-        let digit_fname: PathBuf = [&opts.input, "moon", &format!("moon{}.bin", i)].iter().collect();
-        info!("{}, size: {}", digit_fname.as_os_str().to_str().unwrap(),
-            digit_fname.metadata().unwrap().len().
-            file_size(options::CONVENTIONAL).unwrap_or_else(|_| "Unknown".to_string()));
-        let bytes = std::fs::read(digit_fname).unwrap();
-        entries_directory[directory_index] = offset;
-        output_file.write_all(&bytes).unwrap();
-        offset += bytes.len() as u32;
+        let moon_fname: PathBuf = [&opts.input, "moon", &format!("moon{}.bin", i)].iter().collect();
+        offset = add_file_to_flash(&moon_fname, offset, &mut entries_directory, directory_index, &mut output_file).unwrap();
         directory_index+=1;
     }
 
     //Add data pages
     for m in 1..13 {
         for d in 1..32 {
-            if (m == 4 || m== 6 || m==9 || m==11) && d>0 {
+            if (m == 4 || m== 6 || m==9 || m==11) && d>30 {
                 continue
             }
             if m==2 && d>29 {
                 continue
             }
             let a_black_fname: PathBuf = [&opts.input, "data", &format!("{:02}-{:02}-a-black.bin", m, d)].iter().collect();
-            info!("{:02}-{:02}, A black size: {}", m, d,
-            a_black_fname.metadata().unwrap().len().
-            file_size(options::CONVENTIONAL).unwrap_or_else(|_| "Unknown".to_string()));
-            let bytes = std::fs::read(a_black_fname).unwrap();
-            entries_directory[directory_index] = offset;
-            output_file.write_all(&bytes).unwrap();
-            offset += bytes.len() as u32;
+            offset = add_file_to_flash(&a_black_fname, offset, &mut entries_directory, directory_index, &mut output_file).unwrap();
             directory_index+=1;
+
 
             let a_red_fname: PathBuf = [&opts.input, "data", &format!("{:02}-{:02}-a-red.bin", m, d)].iter().collect();
             if a_red_fname.exists() {
-                info!("{:02}-{:02}, A red size: {}", m, d,
-            a_red_fname.metadata().unwrap().len().
-            file_size(options::CONVENTIONAL).unwrap_or_else(|_| "Unknown".to_string()));
-                let bytes = std::fs::read(a_red_fname).unwrap();
-                entries_directory[directory_index] = offset;
-                output_file.write_all(&bytes).unwrap();
-                offset += bytes.len() as u32;
+                offset = add_file_to_flash(&a_red_fname, offset, &mut entries_directory, directory_index, &mut output_file).unwrap();
                 directory_index+=1;
             } else {
                 entries_directory[directory_index] = 0;
@@ -174,21 +149,11 @@ fn main() {
             }
 
             let b_fname: PathBuf = [&opts.input, "data", &format!("{:02}-{:02}-b.bin", m, d)].iter().collect();
-            info!("{:02}-{:02}, B size: {}", m, d,
-            b_fname.metadata().unwrap().len().
-            file_size(options::CONVENTIONAL).unwrap_or_else(|_| "Unknown".to_string()));
-            let bytes = std::fs::read(b_fname).unwrap();
-            entries_directory[directory_index] = offset;
-            output_file.write_all(&bytes).unwrap();
-            offset += bytes.len() as u32;
+            offset = add_file_to_flash(&b_fname, offset, &mut entries_directory, directory_index, &mut output_file).unwrap();
             directory_index+=1;
         }
     }
 
-    output_file.seek(SeekFrom::Start(0)).unwrap();
-    for entry in entries_directory {
-        output_file.write_u32::<BigEndian>(entry).unwrap();
-        offset += 4;
-    }
+    dump_directory(&mut output_file, &entries_directory).unwrap();
 
 }
