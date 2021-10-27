@@ -41,6 +41,8 @@ enum ConversionError {
     NotGrayscale,
     #[error("File is not a 8-bit image")]
     NotEightBit,
+    #[error("File's width is not divisible by 8")]
+    NotEightPixels,
 }
 
 #[derive(Clap)]
@@ -58,6 +60,8 @@ fn validate_image(image: &OutputInfo) -> Result<bool> {
         Err(ConversionError::NotGrayscale.into())
     } else if image.bit_depth != BitDepth::Eight {
         Err(ConversionError::NotEightBit.into())
+    } else if image.width % 8 != 0 {
+        Err(ConversionError::NotEightPixels.into())
     } else {
         Ok(true)
     }
