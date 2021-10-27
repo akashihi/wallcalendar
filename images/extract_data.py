@@ -30,12 +30,12 @@ class Processor:
             red_im = cv2.bitwise_and(im, im, mask=red_mask)
             red_im = cv2.cvtColor(red_im, cv2.COLOR_BGR2GRAY)
             (_, red_im) = cv2.threshold(red_im, 64, 192, cv2.THRESH_BINARY)
-            red_im = cv2.copyMakeBorder(red_im, 0, 0, 38, 38, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+            red_im = cv2.copyMakeBorder(red_im, 0, 0, 38, 38, cv2.BORDER_CONSTANT, value=(255, 255, 255))
             cv2.imwrite(output_red, red_im)
 
             (_, im) = cv2.threshold(im, 170, 255, cv2.THRESH_BINARY)
             im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-            im = cv2.copyMakeBorder(im, 0, 0, 38, 38, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+            im = cv2.copyMakeBorder(im, 0, 0, 38, 38, cv2.BORDER_CONSTANT, value=(255, 255, 255))
             cv2.imwrite(output_black, im)
 
     def process_b_side(self, month, day):
