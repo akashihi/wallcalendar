@@ -1,0 +1,24 @@
+[package]
+name = "board"
+version = "0.1.0"
+authors = ["Denis Chaplygin <akashihi@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cortex-m = "*"
+embedded-hal = "*"
+bit_field = "*"
+
+[dependencies.stm32l4xx-hal]
+version = "*"
+git = "https://github.com/akashihi/stm32l4xx-hal"
+branch = "bkp"
+features = ["stm32l4x6", "rt"]
+
+# Allows to use 'cargo fix'
+[lib]
+name = "board"
+test = false
+bench = false

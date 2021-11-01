@@ -1,0 +1,12 @@
+[workspace]
+members = [ "board", "fw" ]
+
+[profile.release]
+opt-level = "z"
+codegen-units = 1 # Better optimization
+debug = true # Enable debug symbols as they don't go to the flash
+lto = true # Better optimization
+panic = "abort"
+
+[profile.dev]
+panic = "abort"

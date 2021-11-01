@@ -1,0 +1,7 @@
+[target.thumbv7em-none-eabihf]
+runner = "arm-none-eabi-gdb.exe -q -x openocd.gdb"
+[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+rustflags = ["-C", "link-arg=-Tlink.x", "-C", "inline-threshold=225"]
+
+[build]
+target = "thumbv7em-none-eabihf" # Cortex-M4 with FPU

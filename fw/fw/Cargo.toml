@@ -1,0 +1,23 @@
+[package]
+name = "fw"
+version = "0.1.0"
+authors = ["Denis Chaplygin <akashihi@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cortex-m = "*"
+cortex-m-rt = "*"
+panic-halt = "*"
+embedded-hal = "*"
+heapless = { version = "*", features = ["ufmt-impl"]}
+ufmt = "*"
+cortex-m-semihosting = "0.3.7"
+board = { path = "../board" }
+
+# Allows to use 'cargo fix'
+[[bin]]
+name = "fw"
+test = false
+bench = false
