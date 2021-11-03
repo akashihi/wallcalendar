@@ -13,8 +13,17 @@ use hal::gpio::gpioc::{PC13, PC14, PC15};
 use hal::gpio::{Floating, Input, Output, PushPull};
 use hal::pac::{GPIOA, GPIOB, GPIOC};*/
 pub use stm32l4xx_hal as hal;
+use stm32l4xx_hal::gpio::{Alternate, PushPull, AF7, PD6, PD5, PD4, Output, GpioExt};
+use stm32l4xx_hal::rcc::{AHB2, APB1R1, Clocks};
+use stm32l4xx_hal::serial::{Config, Serial};
+use stm32l4xx_hal::time::U32Ext;
+use stm32l4xx_hal::pac::{USART2, GPIOD};
+use crate::hal::hal::digital::v2::OutputPin;
 
-
+pub type RxPin = PD6<Alternate<AF7,PushPull>>;
+pub type TxPin = PD5<Alternate<AF7,PushPull>>;
+pub type GpsEnPin = PD4<Output<PushPull>>;
+pub type GpsUsart = Serial<USART2, (TxPin, RxPin)>;
 /*pub type LdGreen = PB0<Output<PushPull>>;
 pub type LdRed = PB1<Output<PushPull>>;
 pub type LdYellow = PB10<Output<PushPull>>;
@@ -53,6 +62,18 @@ pub type SsData = PB14<Output<PushPull>>;
 pub type LedScreen = SevenSegment<SsReset, SsOe, SsClk, SsData>;
 
 pub type Speaker = Beeper<PA15<Output<PushPull>>>;*/
+
+pub fn init_uart(gpiod: GPIOD, usart2: USART2, ahb2: &mut AHB2, apb1r1: &mut APB1R1, clocks: Clocks) -> (GpsUsart, GpsEnPin) {
+    let mut gpio = gpiod.split(ahb2);
+    let tx : TxPin = gpio.pd5.into_af7_pushpull(&mut gpio.moder, &mut gpio.otyper, &mut gpio.afrl);
+    let rx : RxPin = gpio.pd6.into_af7_pushpull(&mut gpio.moder, &mut gpio.otyper, &mut gpio.afrl);
+
+    let serial = Serial::usart2(usart2, (tx,rx), Config::default().baudrate(9_600.bps()), clocks, apb1r1);
+
+    let mut gps_en_pin:GpsEnPin = gpio.pd4.into_push_pull_output(&mut gpio.moder, &mut gpio.otyper);
+    gps_en_pin.set_high().unwrap_or_default(); //Gps power control is active low
+    (serial, gps_en_pin)
+}
 
 /*pub fn init<D: DelayUs<u16> + DelayMs<u8>>(
     gpioa: GPIOA,

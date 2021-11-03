@@ -9,7 +9,8 @@ edition = "2018"
 [dependencies]
 cortex-m = "*"
 cortex-m-rt = "*"
-panic-halt = "*"
+# panic-halt = "*"
+panic-semihosting = "*"
 embedded-hal = "*"
 heapless = { version = "*", features = ["ufmt-impl"]}
 ufmt = "*"
