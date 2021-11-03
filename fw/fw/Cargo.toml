@@ -17,6 +17,7 @@ ufmt = "*"
 cortex-m-semihosting = "0.3.7"
 board = { path = "../board" }
 nmea = { path = "../../nmea", default-features = false }
+celestial = { path = "../../celestial",default-features = false }
 
 # Allows to use 'cargo fix'
 [[bin]]

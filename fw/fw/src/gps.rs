@@ -8,7 +8,7 @@ use board::hal::interrupt;
 use board::hal::pac::{NVIC, USART2};
 use cortex_m::interrupt as ci;
 use board::hal::hal::serial::Read;
-use cortex_m_semihosting::hprintln;
+use nmea::{GpsDate, GpsPosition};
 use board::hal::hal::digital::v2::OutputPin;
 
 type NmeaBuffer = heapless::String<84>;
@@ -59,11 +59,14 @@ impl Gps {
         let (_, rx) = usart.split();
         ci::free(|cs| GPS_RX.borrow(cs).replace(Some(rx)));
         unsafe { NVIC::unmask(interrupt::USART2); }
-        en.set_low().unwrap_or_default(); // Enable GPS receiver
+        en.set_high().unwrap_or_default(); // Disable GPS receiver
         Gps {en}
     }
 
-    pub fn sync_date_time(&mut self) {
+    pub fn sync_date_time(&mut self) -> (Option<GpsDate>, Option<GpsPosition>){
+        let mut date = None;
+        let mut pos = None;
+        self.en.set_low().unwrap_or_default(); // Enable GPS receiver
         loop {
             if MESSAGES_SEEN.load(Ordering::Relaxed) > 540 { //We should receive one RMC message per second, so after 540 messages(=9 minutes) we time out
                 break;
@@ -71,12 +74,19 @@ impl Gps {
             ci::free(|cs| {
                 if EOL_FLAG.borrow(cs).borrow().get() {
                     // Full line is received, parse it
-                    let (date, pos) = nmea::parse_nmea_string(&RECEIVE_BUFFER.borrow(cs).borrow());
+                    let (dt, p) = nmea::parse_nmea_string(&RECEIVE_BUFFER.borrow(cs).borrow());
+                    date = dt;
+                    pos = p;
                     RECEIVE_BUFFER.borrow(cs).borrow_mut().clear();
                     EOL_FLAG.borrow(cs).borrow_mut().set(false);
                 }
             });
+            if date.is_some() && pos.is_some() { //We got the fix
+                break;
+            }
             cortex_m::asm::wfi(); //Sleep till next char arrives
         }
+        self.en.set_high().unwrap_or_default(); // Disable GPS receiver
+        (date, pos)
     }
 }

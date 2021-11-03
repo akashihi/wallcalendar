@@ -7,7 +7,6 @@ use board::hal;
 use cortex_m_rt::entry;
 use board::hal::prelude::*;
 use board::hal::rcc::{ClockSecuritySystem, CrystalBypass, MsiFreq};
-use crate::gps::Gps;
 use crate::watch::Watch;
 
 mod watch;
@@ -26,10 +25,7 @@ fn main() -> ! {
             //unsafe {hal::pac::Peripherals::steal().PWR.cr1.modify(|_, w| w.lpr().set_bit().vos().bits(0b10))};
             let mut exti = p.EXTI;
 
-            let (gps_usart, gps_en) = board::init_uart(p.GPIOD, p.USART2, &mut rcc.ahb2, &mut rcc.apb1r1, clocks.clone());
-            let mut gps = Gps::new(gps_usart, gps_en);
-            gps.sync_date_time();
-            let watch = Watch::new(p.RTC, &mut rcc.apb1r1, &mut rcc.bdcr, &mut pwr.cr1, &mut exti);
+            let watch = Watch::new(p.RTC, &mut rcc.apb1r1, &mut rcc.bdcr, &mut pwr.cr1, &mut exti, p.GPIOD, p.USART2, &mut rcc.ahb2, clocks.clone());
         }
     }
     loop{}
