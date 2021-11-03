@@ -1,6 +1,6 @@
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
-//#![cfg_attr(not(test), no_std)]
+#![cfg_attr(not(test), no_std)]
 
 //! Helper module to parse NMEA messages
 //! At the moment onl RMC message is supported
@@ -25,7 +25,6 @@ pub struct GpsPosition {
     pub lat: i32
 }
 
-#[derive(Debug)]
 enum Parts {
     UTC,
     Status,
@@ -39,7 +38,6 @@ enum Parts {
     MagVar,
     VarDir,
     Mode,
-    CheckSum,
     None
 }
 
@@ -57,8 +55,7 @@ impl Parts {
             Parts::Date => {Parts::MagVar}
             Parts::MagVar => {Parts::VarDir}
             Parts::VarDir => {Parts::Mode}
-            Parts::Mode => {Parts::CheckSum}
-            Parts::CheckSum => {Parts::None}
+            Parts::Mode => {Parts::None}
             Parts::None => {Parts::None}
         }
     }
@@ -78,6 +75,24 @@ fn parse_nmea_coords(nmea: &str) -> Option<i32> {
     lexical_core::parse::<f32>(nmea.as_bytes()).ok().map(|v| v*10000.0).map(|v| v.round() as i32)
 }
 
+fn calculate_checksum(message: &str) -> u8 {
+    let mut checksum = 0x00;
+    for byte in message.as_bytes() {
+        checksum = checksum.bitxor(byte);
+    }
+    checksum
+}
+
+fn check_checksum(nmea: &str) -> bool {
+    nmea.get(1..).map(|s| s.split('*'))
+        .map(|mut parts| (parts.next(), parts.next()))
+        .map(|(message, checksum)| (message, checksum.and_then(|cs| u8::from_str_radix(cs, 16).ok())))
+        .and_then(|(message, checksum)| message.zip(checksum))
+        .map(|(message, checksum)| (calculate_checksum(message), checksum))
+        .map(|(actual_checksum, expected_checksum)| actual_checksum == expected_checksum)
+        .unwrap_or(false)
+}
+
 /// Takes a NMEA message, parses it and produces time and position information
 ///
 /// May return double None is message is non-RMC or no data in RMC message
@@ -89,24 +104,26 @@ pub fn parse_nmea_string(nmea: &str) -> (Option<GpsDate>, Option<GpsPosition>) {
     let mut lat = None;
     if let Some(message) = nmea.get(3..6) {
         if message == "RMC" {
-            let mut current_part = Parts::UTC;
-            for part in nmea[7..].split(',') {
-                match current_part {
-                    Parts::Date => date = parse_nmea_date(part),
-                    Parts::Lon => lon = parse_nmea_coords(part),
-                    Parts::Lat => lat = parse_nmea_coords(part),
-                    Parts::LonDir => if part == "W" { lon = lon.map(|v| v.neg())},
-                    Parts::LatDir => if part == "S" { lat = lat.map(|v| v.neg())},
-                    Parts::Mode => { //This is our exit condition
-                        let position = match (lon, lat) {
-                            (Some(lo), Some(la)) => Some(GpsPosition{lon: lo, lat: la}),
-                            _ => None
-                        };
-                        return (date, position)
-                    },
-                    _ => {/* ignore that part */}
+            if check_checksum(nmea) {
+                let mut current_part = Parts::UTC;
+                for part in nmea[7..].split(',') {
+                    match current_part {
+                        Parts::Date => date = parse_nmea_date(part),
+                        Parts::Lon => lon = parse_nmea_coords(part),
+                        Parts::Lat => lat = parse_nmea_coords(part),
+                        Parts::LonDir => if part == "W" { lon = lon.map(|v| v.neg())},
+                        Parts::LatDir => if part == "S" { lat = lat.map(|v| v.neg())},
+                        Parts::Mode => { //This is our exit condition
+                            let position = match (lon, lat) {
+                                (Some(lo), Some(la)) => Some(GpsPosition{lon: lo, lat: la}),
+                                _ => None
+                            };
+                            return (date, position)
+                        },
+                        _ => {/* ignore that part */}
+                    }
+                    current_part = current_part.next_part();
                 }
-                current_part = current_part.next_part();
             }
         }
     }
@@ -196,5 +213,11 @@ mod tests {
         assert_eq!(pos.lat/10, 6005842);
     }
 
+    #[test]
+    fn wrong_checksum_ignored() {
+        let (date, position) = parse_nmea_string("$GPRMC,093052.00,A,6005.84256,N,02414.01597,E,1.055,,031121,,,A*B7");
+        assert!(date.is_none());
+        assert!(position.is_none());
+    }
 
 }
