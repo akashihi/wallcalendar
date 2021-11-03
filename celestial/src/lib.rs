@@ -14,3 +14,5 @@ mod weekday;
 
 pub use moon::moon_phase as moon_phase;
 pub use weekday::weekday as weekday;
+pub use sun::sunrise as sunrise;
+pub use sun::sunset as sunset;
