@@ -8,6 +8,8 @@
 //! * sunrise/sunset
 //! * moon phase
 
+mod moon;
 mod weekday;
 
+pub use moon::moon_phase as moon_phase;
 pub use weekday::weekday as weekday;
