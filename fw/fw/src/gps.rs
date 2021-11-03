@@ -53,16 +53,6 @@ fn USART2() {
     })
 }
 
-fn parse_nmea_string(nmea: &str) -> Option<()> {
-    if let Some(message) = nmea.get(3..6) {
-        if message == "RMC" {
-            MESSAGES_SEEN.fetch_add(1, Ordering::Relaxed);
-            hprintln!("{}", nmea);
-        }
-    }
-    None
-}
-
 impl Gps {
     pub fn new(mut usart: GpsUsart, mut en: GpsEnPin) -> Self {
         usart.listen(Event::Rxne);
@@ -81,7 +71,7 @@ impl Gps {
             ci::free(|cs| {
                 if EOL_FLAG.borrow(cs).borrow().get() {
                     // Full line is received, parse it
-                    parse_nmea_string(&RECEIVE_BUFFER.borrow(cs).borrow());
+                    let (date, pos) = nmea::parse_nmea_string(&RECEIVE_BUFFER.borrow(cs).borrow());
                     RECEIVE_BUFFER.borrow(cs).borrow_mut().clear();
                     EOL_FLAG.borrow(cs).borrow_mut().set(false);
                 }

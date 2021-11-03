@@ -72,7 +72,7 @@ fn parse_nmea_date(nmea: &str) -> Option<GpsDate> {
 }
 
 fn parse_nmea_coords(nmea: &str) -> Option<i32> {
-    lexical_core::parse::<f32>(nmea.as_bytes()).ok().map(|v| v*10000.0).map(|v| v.round() as i32)
+    nmea.parse::<f32>().ok().map(|v| v*10000.0).map(|v| v as i32)
 }
 
 fn calculate_checksum(message: &str) -> u8 {
