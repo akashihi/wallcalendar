@@ -9,7 +9,6 @@ use board::hal::pac::{NVIC, USART2};
 use cortex_m::interrupt as ci;
 use board::hal::hal::serial::Read;
 use cortex_m_semihosting::hprintln;
-use cortex_m::iprint;
 use board::hal::hal::digital::v2::OutputPin;
 
 type NmeaBuffer = heapless::String<84>;
@@ -89,15 +88,5 @@ impl Gps {
             });
             cortex_m::asm::wfi(); //Sleep till next char arrives
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::gps::parse_nmea_string;
-
-    #[test]
-    fn non_rmc_message_skipped() {
-        assert!(parse_nmea_string("$GPGSV,3,1,12,01,15,170,20,02,08,326,18,03,63,126,22,04,66,205,*7D").is_none());
     }
 }

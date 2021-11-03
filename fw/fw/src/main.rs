@@ -1,17 +1,10 @@
 #![no_std]
 #![no_main]
 
-
-#[cfg(debug_assertions)]
 use panic_semihosting as _;
-
-// only link this crate when using the release profile
-//#[cfg(not(debug_assertions))]
-//use panic_halt as _;
 
 use board::hal;
 use cortex_m_rt::entry;
-use board::hal::pac::interrupt;
 use board::hal::prelude::*;
 use board::hal::rcc::{ClockSecuritySystem, CrystalBypass, MsiFreq};
 use crate::gps::Gps;
