@@ -8,12 +8,10 @@ use micromath::F32Ext;
 
 const ZENITH: f32 = (PI/180.0)*96.0; // Civil twilight
 
-/// Calculates sunrise for a location and date
-/// Sunrise in UTC minutes
-pub fn sunrise(day: u32, month: u32, year: u32, lon: f32, lat: f32) -> Option<u16> {
+fn sunpos(day: u32, month: u32, year: u32, lon: f32, lat: f32, t_func: fn(u16, f32) -> f32, h_func: fn(f32) -> f32) -> Option<u16> {
     let year_day = day_of_the_year(day, month, year);
     let lng_hour = lon/15.0; //longitude hour
-    let t = year_day as f32 + ((6.0 - lng_hour) / 24.0); //for sunrise
+    let t = t_func(year_day, lng_hour);
     let m = (0.9856 * t) - 3.289; //sun's mean anomaly
     let l = m + (1.916*f32::sin(deg_to_rad(m))) + (0.020*f32::sin(2.0*deg_to_rad(m))) + 282.634;
     let l_adjusted = if l < 0.0 { l + 360.0 } else if l > 360.0 { l - 360.0} else { l };
@@ -26,7 +24,7 @@ pub fn sunrise(day: u32, month: u32, year: u32, lon: f32, lat: f32) -> Option<u1
     let cos_h = (f32::cos(ZENITH) - (sin_dec * f32::sin(deg_to_rad(lat)))) / (cos_dec * f32::cos(deg_to_rad(lat)));
 
     if cos_h > 1.0 || cos_h < -1.0 { None } else {
-        let h = (360.0-rad_to_deg(f32::acos(cos_h)))/15.0;
+        let h = h_func(cos_h);
         let lmt = h + ra_adjusted - (0.06571 * t) - 6.622;
         let utc = lmt - lng_hour;
         let utc_adjusted = if utc <0.0 { utc + 24.0 } else if utc > 24.0 { utc - 24.0 } else { utc };
@@ -34,30 +32,16 @@ pub fn sunrise(day: u32, month: u32, year: u32, lon: f32, lat: f32) -> Option<u1
     }
 }
 
+/// Calculates sunrise for a location and date
+/// Sunrise in UTC minutes
+pub fn sunrise(day: u32, month: u32, year: u32, lon: f32, lat: f32) -> Option<u16> {
+    sunpos(day, month, year, lon, lat, |year_day,lng_hour| -> f32 {year_day as f32 + ((6.0 - lng_hour) / 24.0)}, |cos_h| -> f32 {(360.0-rad_to_deg(f32::acos(cos_h)))/15.0})
+}
+
 /// Calculates sunset for a location and date
 /// Snset in UTC minutes
 pub fn sunset(day: u32, month: u32, year: u32, lon: f32, lat: f32) -> Option<u16> {
-    let year_day = day_of_the_year(day, month, year);
-    let lng_hour = lon/15.0; //longitude hour
-    let t = year_day as f32 + ((18.0 - lng_hour) / 24.0); //for sunrise
-    let m = (0.9856 * t) - 3.289; //sun's mean anomaly
-    let l = m + (1.916*f32::sin(deg_to_rad(m))) + (0.020*f32::sin(2.0*deg_to_rad(m))) + 282.634;
-    let l_adjusted = if l < 0.0 { l + 360.0 } else if l > 360.0 { l - 360.0} else { l };
-    let ra = rad_to_deg(f32::atan(0.91764 * f32::tan(deg_to_rad(l_adjusted))));
-    let l_quadrant  = f32::floor( l_adjusted/90.0) * 90.0;
-    let ra_quadrant = f32::floor(ra/90.0) * 90.0;
-    let ra_adjusted = (ra + (l_quadrant - ra_quadrant))/15.0;
-    let sin_dec = 0.39782 * f32::sin(deg_to_rad(l_adjusted));
-    let cos_dec = f32::cos(f32::asin(sin_dec));
-    let cos_h = (f32::cos(ZENITH) - (sin_dec * f32::sin(deg_to_rad(lat)))) / (cos_dec * f32::cos(deg_to_rad(lat)));
-
-    if cos_h > 1.0 || cos_h < -1.0 { None } else {
-        let h = rad_to_deg(f32::acos(cos_h))/15.0;
-        let lmt = h + ra_adjusted - (0.06571 * t) - 6.622;
-        let utc = lmt - lng_hour;
-        let utc_adjusted = if utc <0.0 { utc + 24.0 } else if utc > 24.0 { utc - 24.0 } else { utc };
-        Some((utc_adjusted * 60.0) as u16)
-    }
+    sunpos(day, month, year, lon, lat, |year_day,lng_hour| -> f32 {year_day as f32 + ((18.0 - lng_hour) / 24.0)}, |cos_h| -> f32 {rad_to_deg(f32::acos(cos_h))/15.0})
 }
 
 fn day_of_the_year(day: u32, month: u32, year: u32) -> u16 {
