@@ -14,7 +14,17 @@ pub struct GpsDate {
     /// Month of year starting with 1
     pub month: u32,
     /// Year
-    pub year: u32
+    pub year: u32,
+}
+
+/// GPS time  representation (UTC)
+pub struct GpsTime {
+    /// Hour starting with 00
+    pub hour: u32,
+    /// Minute starting with 0
+    pub minute: u32,
+    /// Second starting with 0
+    pub second: u32
 }
 
 /// GPS position representation
@@ -66,7 +76,17 @@ fn parse_nmea_date(nmea: &str) -> Option<GpsDate> {
     let month = nmea.get(2..4).and_then(|s| u32::from_str_radix(s, 10).ok());
     let year = nmea.get(4..6).and_then(|s| u32::from_str_radix(s, 10).ok()).map(|y| y + 2000);
     match (day, month, year) {
-        (Some(d), Some(m), Some(y)) => Some(GpsDate{ date: d, month: m, year: y }),
+        (Some(d), Some(m), Some(y)) => Some(GpsDate { date: d, month: m, year: y }),
+        _ => None
+    }
+}
+
+fn parse_nmea_time(nmea: &str) -> Option<GpsTime> {
+    let hour = nmea.get(0..2).and_then(|s| u32::from_str_radix(s, 10).ok());
+    let minute = nmea.get(2..4).and_then(|s| u32::from_str_radix(s, 10).ok());
+    let second = nmea.get(4..6).and_then(|s| u32::from_str_radix(s, 10).ok());
+    match (hour, minute, second) {
+        (Some(h), Some(m), Some(s)) => Some(GpsTime { hour: h, minute: m, second: s }),
         _ => None
     }
 }
@@ -98,8 +118,9 @@ fn check_checksum(nmea: &str) -> bool {
 /// May return double None is message is non-RMC or no data in RMC message
 /// Returns Date only is not fix available yet
 /// Returns both Data nd Position if stable fix is reported in RMC message
-pub fn parse_nmea_string(nmea: &str) -> (Option<GpsDate>, Option<GpsPosition>) {
+pub fn parse_nmea_string(nmea: &str) -> (Option<(GpsDate, GpsTime)>, Option<GpsPosition>) {
     let mut date = None;
+    let mut time = None;
     let mut lon = None;
     let mut lat = None;
     if let Some(message) = nmea.get(3..6) {
@@ -108,6 +129,7 @@ pub fn parse_nmea_string(nmea: &str) -> (Option<GpsDate>, Option<GpsPosition>) {
                 let mut current_part = Parts::UTC;
                 for part in nmea[7..].split(',') {
                     match current_part {
+                        Parts::UTC => time = parse_nmea_time(part),
                         Parts::Date => date = parse_nmea_date(part),
                         Parts::Lon => lon = parse_nmea_coords(part),
                         Parts::Lat => lat = parse_nmea_coords(part),
@@ -118,7 +140,7 @@ pub fn parse_nmea_string(nmea: &str) -> (Option<GpsDate>, Option<GpsPosition>) {
                                 (Some(lo), Some(la)) => Some(GpsPosition{lon: lo, lat: la}),
                                 _ => None
                             };
-                            return (date, position)
+                            return (date.zip(time), position)
                         },
                         _ => {/* ignore that part */}
                     }
@@ -186,15 +208,26 @@ mod tests {
     }
 
     #[test]
+    fn no_time_without_date() {
+        let (date, position) = parse_nmea_string("$GPRMC,092618.51,V,,,,,,,,,,N*7D");
+        assert!(date.is_none());
+        assert!(position.is_none());
+    }
+
+    #[test]
     fn date_only_rmc_message_is_parsed() {
         let (date, position) = parse_nmea_string("$GPRMC,092623.00,V,,,,,,,031121,,,N*71");
         assert!(date.is_some());
         assert!(position.is_none());
 
-        let dt = date.unwrap();
-        assert_eq!(dt.date, 03);
-        assert_eq!(dt.month, 11);
-        assert_eq!(dt.year, 2021);
+        let (d,t) = date.unwrap();
+        assert_eq!(d.date, 03);
+        assert_eq!(d.month, 11);
+        assert_eq!(d.year, 2021);
+
+        assert_eq!(t.hour, 09);
+        assert_eq!(t.minute, 26);
+        assert_eq!(t.second, 23);
     }
 
     #[test]
@@ -203,10 +236,14 @@ mod tests {
         assert!(date.is_some());
         assert!(position.is_some());
 
-        let dt = date.unwrap();
-        assert_eq!(dt.date, 03);
-        assert_eq!(dt.month, 11);
-        assert_eq!(dt.year, 2021);
+        let (d, t) = date.unwrap();
+        assert_eq!(d.date, 03);
+        assert_eq!(d.month, 11);
+        assert_eq!(d.year, 2021);
+
+        assert_eq!(t.hour, 09);
+        assert_eq!(t.minute, 30);
+        assert_eq!(t.second, 52);
 
         let pos = position.unwrap();
         assert_eq!(pos.lon/10, 2414015);
