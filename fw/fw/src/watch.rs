@@ -46,18 +46,26 @@ impl Watch {
                 let (gps_usart, gps_en) = board::init_uart(gpiod, usart2, ahb2, apb1r1, clocks);
                 let mut gps = Gps::new(gps_usart, gps_en);
                 let (gps_date, gps_pos) = gps.sync_date_time();
-                if let Some (gps_dt) = gps_date {
+                if let Some ((gps_d, gps_t)) = gps_date {
                     //We've seen at least time, that's enough
                     rtc.write_backup_register(0, 0xC0FE_u32); // Mark as synced
 
-                    let weekday = celestial::weekday(gps_dt.date, gps_dt.month, gps_dt.year);
+                    let weekday = celestial::weekday(gps_d.date, gps_d.month, gps_d.year);
                     let rtc_date = Date{
                         day: weekday as u32,
-                        date: gps_dt.date,
-                        month: gps_dt.month,
-                        year: gps_dt.year
+                        date: gps_d.date,
+                        month: gps_d.month,
+                        year: gps_d.year
                     };
-                    rtc.set_date(rtc_date);
+
+                    let rtc_time = Time {
+                        hours: gps_t.hour,
+                        minutes: gps_t.minute,
+                        seconds: gps_t.second,
+                        micros: 0,
+                        daylight_savings: false
+                    };
+                    rtc.set_date_time(rtc_date, rtc_time);
                 }
                 if let Some(g_p) = gps_pos {
                     //Store the position

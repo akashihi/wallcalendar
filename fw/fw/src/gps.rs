@@ -8,7 +8,7 @@ use board::hal::interrupt;
 use board::hal::pac::{NVIC, USART2};
 use cortex_m::interrupt as ci;
 use board::hal::hal::serial::Read;
-use nmea::{GpsDate, GpsPosition};
+use nmea::{GpsDate, GpsPosition, GpsTime};
 use board::hal::hal::digital::v2::OutputPin;
 
 type NmeaBuffer = heapless::String<84>;
@@ -63,7 +63,7 @@ impl Gps {
         Gps {en}
     }
 
-    pub fn sync_date_time(&mut self) -> (Option<GpsDate>, Option<GpsPosition>){
+    pub fn sync_date_time(&mut self) -> (Option<(GpsDate, GpsTime)>, Option<GpsPosition>){
         let mut date = None;
         let mut pos = None;
         self.en.set_low().unwrap_or_default(); // Enable GPS receiver
