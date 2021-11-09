@@ -35,6 +35,29 @@ impl Watch {
         //            05:00-06:00 sync window, but code is still 0xC0CA
 
         let flag_value = rtc.read_backup_register(0);
+        if flag_value != 0xBEEF && flag_value != 0xC0CA && flag_value != 0xC0FE {
+            //Most probably we just turned on and GPS sync may fail, let's put some defaults
+            //before sync
+            //Default timestamp is 2022 Jan 01 00:00:00
+            //Default location is Helsinki
+            let rtc_date = Date{
+                day: 6,
+                date: 1,
+                month: 1,
+                year: 2022
+            };
+
+            let rtc_time = Time {
+                hours: 00,
+                minutes: 00,
+                seconds: 00,
+                micros: 0,
+                daylight_savings: false
+            };
+            rtc.set_date_time(rtc_date, rtc_time);
+            rtc.write_backup_register(1, 24140159);
+            rtc.write_backup_register(2, 60058425);
+        }
         if flag_value != 0xBEEF && flag_value != 0xC0CA { //Any other value means that sync is needed
             let (gps_usart, gps_en) = board::init_uart(gpiod, usart2, ahb2, apb1r1, clocks);
             let mut gps = Gps::new(gps_usart, gps_en);

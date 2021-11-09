@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 cortex-m = "*"
 embedded-hal = "*"
-bit_field = "*"
+bme280 = "0.2.1"
 
 [dependencies.stm32l4xx-hal]
 version = "*"
