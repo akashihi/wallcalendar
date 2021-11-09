@@ -36,42 +36,42 @@ impl Watch {
 
         let flag_value = rtc.read_backup_register(0);
         if flag_value != 0xBEEF && flag_value != 0xC0CA { //Any other value means that sync is needed
-            rtc.write_backup_register(0, 0xC0CA_u32); // Mark as synced
+            let (gps_usart, gps_en) = board::init_uart(gpiod, usart2, ahb2, apb1r1, clocks);
+            let mut gps = Gps::new(gps_usart, gps_en);
+            let (gps_date, gps_pos) = gps.sync_date_time();
+            if let Some ((gps_d, gps_t)) = gps_date {
+                //We've seen at least time, that's enough
+                rtc.write_backup_register(0, 0xC0CA_u32); // Mark as synced
+
+                let weekday = celestial::weekday(gps_d.date, gps_d.month, gps_d.year);
+                let rtc_date = Date{
+                    day: weekday as u32,
+                    date: gps_d.date,
+                    month: gps_d.month,
+                    year: gps_d.year
+                };
+
+                let rtc_time = Time {
+                    hours: gps_t.hour,
+                    minutes: gps_t.minute,
+                    seconds: gps_t.second,
+                    micros: 0,
+                    daylight_savings: false
+                };
+                rtc.set_date_time(rtc_date, rtc_time);
+            }
+            if let Some(g_p) = gps_pos {
+                //Store the position
+                rtc.write_backup_register(1, g_p.lon as u32);
+                rtc.write_backup_register(2, g_p.lat as u32);
+            }
         }
         let (date, time) = rtc.get_date_time();
 
         //Schedule sync for the next run if needed
         if date.day == 7 && time.hours > 05 && time.hours < 06 {
             if flag_value == 0xBEEF {
-                let (gps_usart, gps_en) = board::init_uart(gpiod, usart2, ahb2, apb1r1, clocks);
-                let mut gps = Gps::new(gps_usart, gps_en);
-                let (gps_date, gps_pos) = gps.sync_date_time();
-                if let Some ((gps_d, gps_t)) = gps_date {
-                    //We've seen at least time, that's enough
-                    rtc.write_backup_register(0, 0xC0FE_u32); // Mark as synced
-
-                    let weekday = celestial::weekday(gps_d.date, gps_d.month, gps_d.year);
-                    let rtc_date = Date{
-                        day: weekday as u32,
-                        date: gps_d.date,
-                        month: gps_d.month,
-                        year: gps_d.year
-                    };
-
-                    let rtc_time = Time {
-                        hours: gps_t.hour,
-                        minutes: gps_t.minute,
-                        seconds: gps_t.second,
-                        micros: 0,
-                        daylight_savings: false
-                    };
-                    rtc.set_date_time(rtc_date, rtc_time);
-                }
-                if let Some(g_p) = gps_pos {
-                    //Store the position
-                    rtc.write_backup_register(1, g_p.lon as u32);
-                    rtc.write_backup_register(2, g_p.lat as u32);
-                }
+                rtc.write_backup_register(0, 0xC0FE_u32); // Request sync for the next run
             }
         } else {
             //We are outside of sync window, let's reset sync flags
