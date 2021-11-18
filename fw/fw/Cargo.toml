@@ -15,6 +15,7 @@ embedded-hal = "*"
 heapless = { version = "*", features = ["ufmt-impl"]}
 ufmt = "*"
 cortex-m-semihosting = "0.3.7"
+embedded-graphics = "*"
 board = { path = "../board" }
 nmea = { path = "../../nmea", default-features = false }
 celestial = { path = "../../celestial",default-features = false }
@@ -22,6 +23,7 @@ celestial = { path = "../../celestial",default-features = false }
 [dependencies.epd-waveshare]
 version = "*"
 git = "https://github.com/akashihi/epd-waveshare"
+#path = "f:/epd-waveshare"
 branch = "main"
 
 # Allows to use 'cargo fix'

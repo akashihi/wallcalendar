@@ -43,7 +43,7 @@ pub fn init<'a, D: DelayMs<u8> + DelayUs<u16>>(gpiob: GPIOB, i2c1: I2C1, spi1: S
     let mut port_b = gpiob.split(ahb2);
 
     // E-Paper SPI interface
-    let epd_busy = port_b.pb13;
+    let epd_busy = port_b.pb13.into_floating_input(&mut port_b.moder, &mut port_b.pupdr);
     let mut epd_reset = port_b.pb12.into_push_pull_output(&mut port_b.moder, &mut port_b.otyper);
     let epd_dc = port_b.pb1.into_push_pull_output(&mut port_b.moder, &mut port_b.otyper);
     let mut epd_cs = port_b.pb15.into_push_pull_output(&mut port_b.moder, &mut port_b.otyper);
@@ -58,7 +58,7 @@ pub fn init<'a, D: DelayMs<u8> + DelayUs<u16>>(gpiob: GPIOB, i2c1: I2C1, spi1: S
         spi1,
         (epd_sck, epd_miso, epd_mosi),
         SPI_MODE,
-        100.khz(),
+        400.khz(),
         clocks.clone(),
         apb2,
     );
