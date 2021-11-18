@@ -10,6 +10,8 @@ use board::hal::delay::Delay;
 use board::hal::prelude::*;
 use board::hal::rcc::{ClockSecuritySystem, CrystalBypass, MsiFreq};
 use crate::watch::Watch;
+use epd_waveshare::prelude::*;
+use board::shared_delay::SharedDelay;
 
 mod watch;
 mod gps;
@@ -29,11 +31,12 @@ fn main() -> ! {
 
             //Configure systick as a delay provider
             let systick = cp.SYST;
-            let delay = Delay::new(systick, clocks);
+            let delay = SharedDelay::new(Delay::new(systick, clocks));
 
-            let watch = Watch::new(p.RTC, &mut rcc.apb1r1, &mut rcc.bdcr, &mut pwr.cr1, &mut exti, p.GPIOD, p.USART2, &mut rcc.ahb2, clocks.clone());
+            //let watch = Watch::new(p.RTC, &mut rcc.apb1r1, &mut rcc.bdcr, &mut pwr.cr1, &mut exti, p.GPIOD, p.USART2, &mut rcc.ahb2, clocks.clone());
 
-            let mut bme280 = board::init(p.GPIOB, p.I2C1, &mut rcc.ahb2, &mut rcc.apb1r1, clocks.clone(), delay);
+            let (mut bme280, mut epd_spi, mut epd) = board::init(p.GPIOB, p.I2C1, p.SPI1, &mut rcc.ahb2, &mut rcc.apb1r1, &mut rcc.apb2, clocks.clone(), &delay);
+            epd.clear_frame(&mut epd_spi, &mut delay.share());
             loop{
                 let air_condition = bme280.measure().unwrap();
                 hprintln!("Temperature: {}, Humidity: {}, Pressure: {}", air_condition.temperature, air_condition.humidity, air_condition.pressure);
