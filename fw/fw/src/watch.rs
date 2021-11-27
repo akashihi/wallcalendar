@@ -34,7 +34,7 @@ impl Watch {
         // * 0xC0CA - Sync is done. This is set by sync procedure and reset if we are outside of
         //            05:00-06:00 sync window, but code is still 0xC0CA
 
-        let flag_value = rtc.read_backup_register(0);
+        let flag_value = rtc.read_backup_register(0).unwrap_or(0);
         if flag_value != 0xBEEF && flag_value != 0xC0CA && flag_value != 0xC0FE {
             //Most probably we just turned on and GPS sync may fail, let's put some defaults
             //before sync
@@ -112,8 +112,8 @@ impl Watch {
         //Get position, stored in BPK1 (lon) and bkp2 (lon)
         //Coordinates are stored as integers, multiplied by 10^6, which gives good enough resolution
         //for sun/moon calculations
-        let lon_i = rtc.read_backup_register(1) as i32;
-        let lat_i = rtc.read_backup_register(2) as i32;
+        let lon_i = rtc.read_backup_register(1).unwrap_or(0) as i32;
+        let lat_i = rtc.read_backup_register(2).unwrap_or(0) as i32;
 
         let lon = lon_i as f32 / 1_000_000.0;
         let lat = lat_i as f32/ 1_000_000.0;
