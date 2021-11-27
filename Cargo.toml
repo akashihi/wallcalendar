@@ -1,2 +1,2 @@
 [workspace]
-members = [ "celestial", "nmea" ]
+members = [ "celestial", "nmea", "png2bin" ]

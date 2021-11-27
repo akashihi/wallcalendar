@@ -22,7 +22,7 @@
 use anyhow::{Context, Result};
 use bit_field::BitField;
 use byteorder::{LittleEndian, WriteBytesExt};
-use clap::{AppSettings, Clap};
+use clap::Parser;
 use humansize::{file_size_opts as options, FileSize};
 use lzss::{Lzss, SliceReader, VecWriter};
 use png::{BitDepth, ColorType, OutputInfo};
@@ -45,9 +45,8 @@ enum ConversionError {
     NotEightPixels,
 }
 
-#[derive(Clap)]
+#[derive(Parser)]
 #[clap(version = "1.0", author = "Denis Chaplygin <akashihi@gmail.com>")]
-#[clap(setting = AppSettings::ColoredHelp)]
 struct Opts {
     // Input directory
     input: String,
@@ -120,10 +119,11 @@ fn compress_image(input: DirEntry) -> Result<()> {
             byte.set_bit(bit, bytes[image_index] > 0);
         }
     }
-    let compressed = VecWriter::with_capacity(32_768);
-    let compressed_bytes = MyLzss::compress(SliceReader::new(&bitstream), compressed)?;
+    //let compressed = VecWriter::with_capacity(32_768);
+    //let compressed_bytes = MyLzss::compress(SliceReader::new(&bitstream), compressed)?;
 
-    write_bin(&input, &compressed_bytes)?;
+    //write_bin(&input, &compressed_bytes)?;
+    write_bin(&input, &bitstream)?;
 
     let file_size = input.path().metadata()?.len();
     info!(
@@ -134,7 +134,8 @@ fn compress_image(input: DirEntry) -> Result<()> {
         file_size
             .file_size(options::CONVENTIONAL)
             .unwrap_or_else(|_| "Unknown".to_string()),
-        compressed_bytes
+        //compressed_bytes
+        bitstream
             .len()
             .file_size(options::CONVENTIONAL)
             .unwrap_or_else(|_| "Unknown".to_string())
