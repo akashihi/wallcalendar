@@ -49,17 +49,18 @@ fn main() -> ! {
             let mut display = Display5in83::default();
             display.set_rotation(DisplayRotation::Rotate90);
 
-            let bin_img = BinImage::new_stripes();
-            let image = Image::new(&bin_img, Point::zero());
-            image.draw(&mut display);
+            let a_side_black = include_bytes!("../../../test_images/01-01-a-black.bin");
+            let a_side_red = include_bytes!("../../../test_images/01-01-a-red.bin");
+            let one = include_bytes!("../../../test_images/1.bin");
 
-            let sq_img = BinImage::new_square();
-            Image::new(&sq_img, Point::new(200, 200)).draw(&mut display);
-            Image::new(&sq_img, Point::new(300, 300)).draw(&mut display);
+            let bin_img = BinImage::from_slice(Size::new(480, 420),a_side_black, Some(a_side_red));
+            Image::new(&bin_img, Point::zero()).draw(&mut display);
+            let one_img = BinImage::from_slice(Size::new(80, 148),one, None);
+            Image::new(&one_img, Point::new(200, 430)).draw(&mut display);
 
-            Line::new(Point::new(0, 324), Point::new(480, 324)).into_styled(PrimitiveStyle::with_stroke(TriColor::Black, 2)).draw(&mut display).unwrap();
+            /*Line::new(Point::new(0, 324), Point::new(480, 324)).into_styled(PrimitiveStyle::with_stroke(TriColor::Black, 2)).draw(&mut display).unwrap();
             Line::new(Point::new(240,0), Point::new(240, 648)).into_styled(PrimitiveStyle::with_stroke(TriColor::Chromatic, 2)).draw(&mut display).unwrap();
-            Line::new(Point::new(0,0), Point::new(480, 640)).into_styled(PrimitiveStyle::with_stroke(TriColor::White, 20)).draw(&mut display).unwrap();
+            Line::new(Point::new(0,0), Point::new(480, 640)).into_styled(PrimitiveStyle::with_stroke(TriColor::White, 20)).draw(&mut display).unwrap();*/
 
             epd.update_color_frame(&mut epd_spi, display.bw_buffer(), display.chromatic_buffer()).unwrap();
             epd.display_frame(&mut epd_spi, &mut delay.share()).unwrap();
