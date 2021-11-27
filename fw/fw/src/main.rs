@@ -21,6 +21,7 @@ use board::shared_delay::SharedDelay;
 
 mod watch;
 mod gps;
+mod bin_image;
 
 #[entry]
 fn main() -> ! {
