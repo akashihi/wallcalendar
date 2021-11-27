@@ -7,6 +7,7 @@ use board::hal;
 use cortex_m_rt::entry;
 use cortex_m_semihosting::hprintln;
 use embedded_graphics::Drawable;
+use embedded_graphics::image::Image;
 use embedded_graphics::prelude::{DrawTarget, PixelIteratorExt, Point, Primitive, Size};
 use embedded_graphics::primitives::{Line, PrimitiveStyle, Rectangle};
 use epd_waveshare::epd5in83b_v2::Display5in83;
@@ -18,6 +19,7 @@ use epd_waveshare::prelude::*;
 use epd_waveshare::prelude::WaveshareDisplay;
 use epd_waveshare::prelude::WaveshareThreeColorDisplay;
 use board::shared_delay::SharedDelay;
+use crate::bin_image::BinImage;
 
 mod watch;
 mod gps;
@@ -43,14 +45,23 @@ fn main() -> ! {
             //let watch = Watch::new(p.RTC, &mut rcc.apb1r1, &mut rcc.bdcr, &mut pwr.cr1, &mut exti, p.GPIOD, p.USART2, &mut rcc.ahb2, clocks.clone());
 
             let (mut bme280, mut epd_spi, mut epd) = board::init(p.GPIOB, p.I2C1, p.SPI1, &mut rcc.ahb2, &mut rcc.apb1r1, &mut rcc.apb2, clocks.clone(), &delay);
-            epd.clear_frame(&mut epd_spi, &mut delay.share());
-            /*let mut display = Display5in83::default();
+            //epd.clear_frame(&mut epd_spi, &mut delay.share());
+            let mut display = Display5in83::default();
+            display.set_rotation(DisplayRotation::Rotate90);
 
+            let bin_img = BinImage::new_stripes();
+            let image = Image::new(&bin_img, Point::zero());
+            image.draw(&mut display);
 
-            Line::new(Point::new(324,0), Point::new(324, 480)).into_styled(PrimitiveStyle::with_stroke(TriColor::Black, 2)).draw(&mut display).unwrap();
-            Line::new(Point::new(0,240), Point::new(648, 240)).into_styled(PrimitiveStyle::with_stroke(TriColor::Chromatic, 2)).draw(&mut display).unwrap();
-            Line::new(Point::new(0,0), Point::new(640, 480)).into_styled(PrimitiveStyle::with_stroke(TriColor::White, 20)).draw(&mut display).unwrap();
-            epd.update_color_frame(&mut epd_spi, display.bw_buffer(), display.chromatic_buffer()).unwrap();*/
+            let sq_img = BinImage::new_square();
+            Image::new(&sq_img, Point::new(200, 200)).draw(&mut display);
+            Image::new(&sq_img, Point::new(300, 300)).draw(&mut display);
+
+            Line::new(Point::new(0, 324), Point::new(480, 324)).into_styled(PrimitiveStyle::with_stroke(TriColor::Black, 2)).draw(&mut display).unwrap();
+            Line::new(Point::new(240,0), Point::new(240, 648)).into_styled(PrimitiveStyle::with_stroke(TriColor::Chromatic, 2)).draw(&mut display).unwrap();
+            Line::new(Point::new(0,0), Point::new(480, 640)).into_styled(PrimitiveStyle::with_stroke(TriColor::White, 20)).draw(&mut display).unwrap();
+
+            epd.update_color_frame(&mut epd_spi, display.bw_buffer(), display.chromatic_buffer()).unwrap();
             epd.display_frame(&mut epd_spi, &mut delay.share()).unwrap();
             loop{
                 let air_condition = bme280.measure().unwrap();
