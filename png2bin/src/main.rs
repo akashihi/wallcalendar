@@ -119,11 +119,10 @@ fn compress_image(input: DirEntry) -> Result<()> {
             byte.set_bit(bit, bytes[image_index] > 0);
         }
     }
-    //let compressed = VecWriter::with_capacity(32_768);
-    //let compressed_bytes = MyLzss::compress(SliceReader::new(&bitstream), compressed)?;
+    let compressed = VecWriter::with_capacity(32_768);
+    let compressed_bytes = MyLzss::compress(SliceReader::new(&bitstream), compressed)?;
 
-    //write_bin(&input, &compressed_bytes)?;
-    write_bin(&input, &bitstream)?;
+    write_bin(&input, &compressed_bytes)?;
 
     let file_size = input.path().metadata()?.len();
     info!(
@@ -134,8 +133,7 @@ fn compress_image(input: DirEntry) -> Result<()> {
         file_size
             .file_size(options::CONVENTIONAL)
             .unwrap_or_else(|_| "Unknown".to_string()),
-        //compressed_bytes
-        bitstream
+        compressed_bytes
             .len()
             .file_size(options::CONVENTIONAL)
             .unwrap_or_else(|_| "Unknown".to_string())

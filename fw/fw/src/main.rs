@@ -53,9 +53,9 @@ fn main() -> ! {
             let a_side_red = include_bytes!("../../../test_images/01-01-a-red.bin");
             let one = include_bytes!("../../../test_images/1.bin");
 
-            let bin_img = BinImage::from_slice(Size::new(480, 420),a_side_black, Some(a_side_red));
+            let bin_img = BinImage::from_slice(Size::new(480, 420),&a_side_black[2..], Some(&a_side_red[2..]));
             Image::new(&bin_img, Point::zero()).draw(&mut display);
-            let one_img = BinImage::from_slice(Size::new(80, 148),one, None);
+            let one_img = BinImage::from_slice(Size::new(80, 148),&one[2..], None);
             Image::new(&one_img, Point::new(200, 430)).draw(&mut display);
 
             /*Line::new(Point::new(0, 324), Point::new(480, 324)).into_styled(PrimitiveStyle::with_stroke(TriColor::Black, 2)).draw(&mut display).unwrap();
