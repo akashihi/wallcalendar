@@ -10,6 +10,7 @@
 //!
 //! Image directory is expected to have particular subdirectories with particular files in them:
 //!
+//! -- /layout.bin - Mandatory, information area layout template (480x228)
 //! -- /big_digits/{0..9}.bin - Mandatory, contains big digits (80x48)
 //! -- /data/%mm%-%dd%-a-black.bin - Mandatory, frontpage of calendar data in black color (480x420)
 //! -- /data/%mm%-%dd%-a-red.bin - Optional, red channel of calendar frontpage (480x420)
@@ -23,6 +24,7 @@
 //! File begins with directory of entries. Each entry is u32, pointing to the first byte of
 //! `.bin` file related to entry. First 8 bits of entry are unused, but could be used in the future for 8-bit checksum.
 //! Offset `0x0000` is a marker of missing data. Entries follow each other in the following order:
+//! * layout template entry
 //! * 10 entries of big digits
 //! * 10 entries of small digits
 //! * 12 month names entries
@@ -30,14 +32,14 @@
 //! * 8 moon phase entries
 //! * 366 triplets of a side black, a side red and b side red images for each day, starting from 1st of January
 //!
-//!The directory takes 366*3 + 8 + 7 + 12 + 10 +10 = 1145 entries or 1145*32=36640 bytes. First images starts
+//!The directory takes 1 + 366*3 + 8 + 7 + 12 + 10 +10 = 1146 entries or 1146*4=4584 bytes. First images starts
 //! exactly after directory
 //!
 
 use std::fs::{File, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
-use byteorder::{BigEndian, WriteBytesExt};
+use byteorder::{LittleEndian, WriteBytesExt};
 use clap::{Parser};
 use humansize::{file_size_opts as options, FileSize};
 use anyhow::Result;
@@ -69,7 +71,7 @@ fn dump_directory(output_file: &mut File, entries_directory: &[u32]) -> Result<u
     let mut offset = 0;
     output_file.seek(SeekFrom::Start(0))?;
     for entry in entries_directory {
-        output_file.write_u32::<BigEndian>(*entry)?;
+        output_file.write_u32::<LittleEndian>(*entry)?;
         offset += 4;
     };
     Ok(offset)
@@ -84,11 +86,16 @@ fn main() {
     let opts: Opts = Opts::parse();
     info!("Input directory: {}", opts.input);
 
-    let mut entries_directory: [u32; 1145] = [0; 1145];
+    let mut entries_directory: [u32; 1146] = [0; 1146];
     let mut directory_index=0;
 
     let mut output_file = OpenOptions::new().write(true).create(true).truncate(true).open("spiflash.bin").unwrap();
     let mut offset = dump_directory(&mut output_file, &entries_directory).unwrap();
+
+    //Add layout
+    let layout_fname : PathBuf = [&opts.input, "layout.bin"].iter().collect();
+    offset = add_file_to_flash(&layout_fname, offset, &mut entries_directory, directory_index, &mut output_file).unwrap();
+    directory_index+=1;
 
     //Add Big Digits
     for i in 0..10 {
