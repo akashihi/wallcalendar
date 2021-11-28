@@ -14,7 +14,6 @@ use cortex_m_semihosting::hprintln;
 use embedded_graphics::Drawable;
 use embedded_graphics::image::Image;
 use embedded_graphics::prelude::{DrawTarget, PixelIteratorExt, Point, Primitive, Size};
-use embedded_graphics::primitives::{Line, PrimitiveStyle, Rectangle};
 use epd_waveshare::epd5in83b_v2::Display5in83;
 use board::hal::delay::Delay;
 use board::hal::prelude::*;
@@ -25,10 +24,12 @@ use epd_waveshare::prelude::WaveshareDisplay;
 use epd_waveshare::prelude::WaveshareThreeColorDisplay;
 use board::shared_delay::SharedDelay;
 use crate::bin_image::BinImage;
+use crate::image_manager::ImageManager;
 
 mod watch;
 mod gps;
 mod bin_image;
+mod image_manager;
 
 #[global_allocator]
 static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
@@ -61,21 +62,14 @@ fn main() -> ! {
             let mut display = Display5in83::default();
             display.set_rotation(DisplayRotation::Rotate90);
 
-            let a_side_black = include_bytes!("../../../test_images/01-01-a-black.bin");
-            let a_side_red = include_bytes!("../../../test_images/01-01-a-red.bin");
-            let one = include_bytes!("../../../test_images/1.bin");
-
-            let bin_img = BinImage::from_slice(Size::new(480, 420),&a_side_black[2..], Some(&a_side_red[2..]));
-            Image::new(&bin_img, Point::zero()).draw(&mut display);
-            let one_img = BinImage::from_slice(Size::new(80, 148),&one[2..], None);
-            Image::new(&one_img, Point::new(200, 430)).draw(&mut display);
-
-            /*Line::new(Point::new(0, 324), Point::new(480, 324)).into_styled(PrimitiveStyle::with_stroke(TriColor::Black, 2)).draw(&mut display).unwrap();
-            Line::new(Point::new(240,0), Point::new(240, 648)).into_styled(PrimitiveStyle::with_stroke(TriColor::Chromatic, 2)).draw(&mut display).unwrap();
-            Line::new(Point::new(0,0), Point::new(480, 640)).into_styled(PrimitiveStyle::with_stroke(TriColor::White, 20)).draw(&mut display).unwrap();*/
+            //let layout_img = ImageManager::layout();
+            //Image::new(&layout_img, Point::new(0, 421)).draw(&mut display).unwrap();
+            let b_side = ImageManager::b_side(15);
+            Image::new(&b_side, Point::zero()).draw(&mut display).unwrap();
 
             epd.update_color_frame(&mut epd_spi, display.bw_buffer(), display.chromatic_buffer()).unwrap();
             epd.display_frame(&mut epd_spi, &mut delay.share()).unwrap();
+            epd.sleep(&mut epd_spi, &mut delay.share()).unwrap();
             loop{
                 let air_condition = bme280.measure().unwrap();
                 hprintln!("Temperature: {}, Humidity: {}, Pressure: {}", air_condition.temperature, air_condition.humidity, air_condition.pressure);
