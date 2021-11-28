@@ -17,8 +17,8 @@ fn inflate(size: Size, data: &[u8]) -> Vec<u8>{
     let plane_size = (size.width/8 * size.height) as usize;
     let mut plane = Vec::with_capacity(plane_size);
     plane.resize(plane_size, 0x00);
-    let mut reader = SliceReader::new(&data);
-    let mut writer = SliceWriter::new(&mut plane);
+    let reader = SliceReader::new(&data);
+    let writer = SliceWriter::new(&mut plane);
     MyLzss::decompress(reader, writer).unwrap();
     plane
 }

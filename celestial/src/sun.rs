@@ -44,7 +44,8 @@ pub fn sunset(day: u32, month: u32, year: u32, lon: f32, lat: f32) -> Option<u16
     sunpos(day, month, year, lon, lat, |year_day,lng_hour| -> f32 {year_day as f32 + ((18.0 - lng_hour) / 24.0)}, |cos_h| -> f32 {rad_to_deg(f32::acos(cos_h))/15.0})
 }
 
-fn day_of_the_year(day: u32, month: u32, year: u32) -> u16 {
+/// Calculates number of a day in the year for the specified day
+pub fn day_of_the_year(day: u32, month: u32, year: u32) -> u16 {
     let n1 = 275 * month / 9;
     let n2 = (month + 9) / 12;
     let n3 = 1 + ((year - 4 * (year / 4) + 2) / 3);

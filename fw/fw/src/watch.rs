@@ -13,7 +13,7 @@ use board::hal::rcc::{AHB2, APB1R1, BDCR, Clocks};
 use board::hal::rtc::{Event, Rtc, RtcConfig};
 use crate::gps::Gps;
 
-pub(crate) struct Watch {
+pub struct Watch {
     date: Date,
     time: Time,
     lon: f32,
@@ -58,7 +58,7 @@ impl Watch {
             rtc.write_backup_register(1, 24140159);
             rtc.write_backup_register(2, 60058425);
         }
-        if flag_value != 0xBEEF && flag_value != 0xC0CA { //Any other value means that sync is needed
+        /*if flag_value != 0xBEEF && flag_value != 0xC0CA { //Any other value means that sync is needed
             let (gps_usart, gps_en) = board::init_uart(gpiod, usart2, ahb2, apb1r1, clocks);
             let mut gps = Gps::new(gps_usart, gps_en);
             let (gps_date, gps_pos) = gps.sync_date_time();
@@ -88,7 +88,7 @@ impl Watch {
                 rtc.write_backup_register(1, g_p.lon as u32);
                 rtc.write_backup_register(2, g_p.lat as u32);
             }
-        }
+        }*/
         let (date, time) = rtc.get_date_time();
 
         //Schedule sync for the next run if needed
@@ -119,5 +119,18 @@ impl Watch {
         let lat = lat_i as f32/ 1_000_000.0;
 
         Watch{date, time, lon, lat}
+    }
+
+    pub fn date(&self) -> Date {
+        self.date
+    }
+    pub fn time(&self) -> Time {
+        self.time
+    }
+    pub fn lon(&self) -> f32 {
+        self.lon
+    }
+    pub fn lat(&self) -> f32 {
+        self.lat
     }
 }

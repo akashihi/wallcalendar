@@ -25,11 +25,13 @@ use epd_waveshare::prelude::WaveshareThreeColorDisplay;
 use board::shared_delay::SharedDelay;
 use crate::bin_image::BinImage;
 use crate::image_manager::ImageManager;
+use crate::renderer::Renderer;
 
 mod watch;
 mod gps;
 mod bin_image;
 mod image_manager;
+mod renderer;
 
 #[global_allocator]
 static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
@@ -55,24 +57,21 @@ fn main() -> ! {
             let systick = cp.SYST;
             let delay = SharedDelay::new(Delay::new(systick, clocks));
 
-            //let watch = Watch::new(p.RTC, &mut rcc.apb1r1, &mut rcc.bdcr, &mut pwr.cr1, &mut exti, p.GPIOD, p.USART2, &mut rcc.ahb2, clocks.clone());
+            let watch = Watch::new(p.RTC, &mut rcc.apb1r1, &mut rcc.bdcr, &mut pwr.cr1, &mut exti, p.GPIOD, p.USART2, &mut rcc.ahb2, clocks.clone());
 
             let (mut bme280, mut epd_spi, mut epd) = board::init(p.GPIOB, p.I2C1, p.SPI1, &mut rcc.ahb2, &mut rcc.apb1r1, &mut rcc.apb2, clocks.clone(), &delay);
             //epd.clear_frame(&mut epd_spi, &mut delay.share());
             let mut display = Display5in83::default();
             display.set_rotation(DisplayRotation::Rotate90);
 
-            //let layout_img = ImageManager::layout();
-            //Image::new(&layout_img, Point::new(0, 421)).draw(&mut display).unwrap();
-            let b_side = ImageManager::b_side(15);
-            Image::new(&b_side, Point::zero()).draw(&mut display).unwrap();
+            Renderer::render_side_a(&mut display, &watch);
 
             epd.update_color_frame(&mut epd_spi, display.bw_buffer(), display.chromatic_buffer()).unwrap();
             epd.display_frame(&mut epd_spi, &mut delay.share()).unwrap();
             epd.sleep(&mut epd_spi, &mut delay.share()).unwrap();
             loop{
-                let air_condition = bme280.measure().unwrap();
-                hprintln!("Temperature: {}, Humidity: {}, Pressure: {}", air_condition.temperature, air_condition.humidity, air_condition.pressure);
+                /*let air_condition = bme280.measure().unwrap();
+                hprintln!("Temperature: {}, Humidity: {}, Pressure: {}", air_condition.temperature, air_condition.humidity, air_condition.pressure);*/
             }
         }
     }

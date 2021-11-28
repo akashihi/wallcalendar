@@ -16,3 +16,4 @@ pub use moon::moon_phase as moon_phase;
 pub use weekday::weekday as weekday;
 pub use sun::sunrise as sunrise;
 pub use sun::sunset as sunset;
+pub use sun::day_of_the_year as day_of_the_year;

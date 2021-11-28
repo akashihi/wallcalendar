@@ -1,4 +1,3 @@
-use cortex_m_semihosting::hprintln;
 use embedded_graphics::prelude::Size;
 use crate::BinImage;
 
@@ -49,28 +48,38 @@ impl ImageManager {
         get_bw_image(size, (value + 40) as usize)
     }
 
-    pub fn b_side(value: u8) -> BinImage {
+    pub fn b_side(value: u16) -> BinImage {
         // B side image is 480x648, bw, 366 entries starting from position 40, first entry is for January
         let size = Size::new(480, 648);
         let day_offset = value * 3;
-        get_bw_image(size, (value + day_offset + 2) as usize) //Where 2 is b_side offset in the day triplet
+        get_bw_image(size, (48 + day_offset + 2) as usize) //Where 2 is b_side offset in the day triplet
+    }
+
+    pub fn a_side(value: u16) -> BinImage {
+        // A side image is 480x420, rbw, 366 entries starting from position 40, first entry is for January
+        let size = Size::new(480, 420);
+        let day_offset = value * 3;
+        let bw_data = fetch_image_data(48 + day_offset as usize).expect("BW image missing");
+        let rw_data = fetch_image_data((48 + day_offset+1) as usize);
+        BinImage::from_slice(size, bw_data, rw_data)
     }
 }
 
-fn get_bw_image(size: Size, index: usize) -> BinImage {
+fn fetch_image_data(index: usize) -> Option<&'static [u8]> {
     let index_position = index * 4;
-    hprintln!("Index: {}, Index position: {}", index, index_position);
     let mut offset_bytes : [u8; 4] = [0,0,0,0];
     offset_bytes.copy_from_slice(&IMAGES[index_position..index_position+4]);
     let offset = u32::from_le_bytes(offset_bytes) as usize;
-    hprintln!("Offset: {}", offset);
     if offset == 0 {
-        panic!("Layout image missing")
+        return None
     }
     let mut image_size_bytes : [u8; 2] = [0,0];
     image_size_bytes.copy_from_slice(&IMAGES[offset..offset+2]);
     let image_size = u16::from_le_bytes(image_size_bytes) as usize;
-    hprintln!("Image size: {}", image_size);
-    let image_data = &IMAGES[offset+2..offset+2+image_size];
+    Some(&IMAGES[offset+2..offset+2+image_size])
+}
+
+fn get_bw_image(size: Size, index: usize) -> BinImage {
+    let image_data = fetch_image_data(index).expect("BW image missing");
     BinImage::from_slice(size, image_data, None)
 }
