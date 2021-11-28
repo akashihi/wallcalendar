@@ -2,34 +2,31 @@ use embedded_graphics::{prelude::*};
 use embedded_graphics::primitives::Rectangle;
 use epd_waveshare::prelude::TriColor;
 use bit_field::BitField;
-use heapless::Vec;
+use alloc::vec::Vec;
 use lzss::{Lzss, SliceReader, SliceWriter};
 
 type MyLzss = Lzss<10, 4, 0x20, { 1 << 10 }, { 2 << 10 }>;
 
 pub struct BinImage {
     size: Size,
-    bw_plane: Vec<u8, 25200>,
-    rw_plane: Option<Vec<u8, 25200>>,
+    bw_plane: Vec<u8>,
+    rw_plane: Option<Vec<u8>>,
+}
+
+fn inflate(size: Size, data: &[u8]) -> Vec<u8>{
+    let plane_size = (size.width/8 * size.height) as usize;
+    let mut plane = Vec::with_capacity(plane_size);
+    plane.resize(plane_size, 0x00);
+    let mut reader = SliceReader::new(&data);
+    let mut writer = SliceWriter::new(&mut plane);
+    MyLzss::decompress(reader, writer).unwrap();
+    plane
 }
 
 impl BinImage {
     pub fn from_slice(size: Size, bw_data: &[u8], rw_data: Option<& [u8]>) -> BinImage {
-        let mut bw_plane = Vec::new();
-        bw_plane.resize_default(25200);
-        let mut bw_reader = SliceReader::new(&bw_data);
-        let mut bw_writer = SliceWriter::new(&mut bw_plane);
-        MyLzss::decompress(bw_reader, bw_writer).unwrap();
-        let rw_plane = if let Some(data) = rw_data {
-            let mut rw_plane = Vec::new();
-            rw_plane.resize_default(25200);
-            let mut rw_reader = SliceReader::new(&data);
-            let mut rw_writer = SliceWriter::new(&mut rw_plane);
-            MyLzss::decompress(rw_reader, rw_writer).unwrap();
-            Some(rw_plane)
-        } else {
-            None
-        };
+        let bw_plane = inflate(size, bw_data);
+        let rw_plane = rw_data.map(|data| inflate(size, data));
         BinImage{size, bw_plane, rw_plane}
     }
 }

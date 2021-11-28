@@ -1,6 +1,11 @@
 #![no_std]
 #![no_main]
+#![feature(alloc_error_handler)]
 
+extern crate alloc;
+
+use core::alloc::Layout;
+use alloc_cortex_m::CortexMHeap;
 use panic_semihosting as _;
 
 use board::hal;
@@ -25,10 +30,17 @@ mod watch;
 mod gps;
 mod bin_image;
 
+#[global_allocator]
+static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
+
 #[entry]
 fn main() -> ! {
+    let heap_start = cortex_m_rt::heap_start() as usize;
+    let heap_size = 72*1024; // 72kb, which should be enough for all the images (55608 bytes max) plus template image (13680 bytes)
+    unsafe { ALLOCATOR.init(heap_start, heap_size) } //Heap should be in the SRAM section
     if let Some(cp) = cortex_m::Peripherals::take() {
         if let Some(p) = hal::pac::Peripherals::take() {
+
             // Configure clocks
             let mut rcc = p.RCC.constrain();
             let mut pwr = p.PWR.constrain(&mut rcc.apb1r1);
@@ -71,4 +83,9 @@ fn main() -> ! {
         }
     }
     loop{}
+}
+
+#[alloc_error_handler]
+fn oom(_: Layout) -> ! {
+    panic!("OOM")
 }
