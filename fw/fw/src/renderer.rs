@@ -1,4 +1,4 @@
-use celestial::{day_of_the_year, moon_phase};
+use celestial::{day_of_the_year, moon_phase, sunrise, sunset};
 use cortex_m_semihosting::hprintln;
 use embedded_graphics::image::Image;
 use embedded_graphics::prelude::*;
@@ -53,6 +53,20 @@ impl Renderer {
 
         //Draw year
         Self::render_small_digits(display, watch.date().year as u16, Point::new(6, 624), 4);
+
+        //Draw sunrise/sunset
+        if let Some(sunrise) = sunrise(watch.date().date, watch.date().month, watch.date().year, watch.lon(), watch.lat()) {
+            let hours = sunrise/60;
+            let minutes = sunrise-(hours*60);
+            Self::render_small_digits(display, hours, Point::new(66, 524), 2);
+            Self::render_small_digits(display, minutes, Point::new(110, 524), 2);
+        }
+        if let Some(sunset) = sunset(watch.date().date, watch.date().month, watch.date().year, watch.lon(), watch.lat()) {
+            let hours = sunset/60;
+            let minutes = sunset-(hours*60);
+            Self::render_small_digits(display, hours, Point::new(66, 550), 2);
+            Self::render_small_digits(display, minutes, Point::new(110, 550), 2);
+        }
     }
 
     fn render_small_digits(display: &mut Display5in83, value: u16, position: Point, width: u8) {
