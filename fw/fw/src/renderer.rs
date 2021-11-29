@@ -52,17 +52,23 @@ impl Renderer {
         }
 
         //Draw year
-        let year_thousands = watch.date().year / 1000;
-        let year_hundreds = (watch.date().year % 1000) / 100;
-        let year_tens = (watch.date().year % 100) / 10;
-        let year_ones = watch.date().year % 10;
-        let thousands_year_image = ImageManager::small_digit((year_thousands) as u8);
-        let hundreds_year_image = ImageManager::small_digit((year_hundreds) as u8);
-        let tens_year_image = ImageManager::small_digit((year_tens) as u8);
-        let ones_year_image = ImageManager::small_digit((year_ones) as u8);
-        Image::new(&thousands_year_image, Point::new(6, 624)).draw(display).unwrap();
-        Image::new(&hundreds_year_image, Point::new(24, 624)).draw(display).unwrap();
-        Image::new(&tens_year_image, Point::new(40, 624)).draw(display).unwrap();
-        Image::new(&ones_year_image, Point::new(56, 624)).draw(display).unwrap();
+        Self::render_small_digits(display, watch.date().year as u16, Point::new(6, 624), 4);
+    }
+
+    fn render_small_digits(display: &mut Display5in83, value: u16, position: Point, width: u8) {
+        let mut numerator = value;
+        let mut current_x = position.x;
+        for w in (0..width).rev() {
+            let denominator = 10_u32.pow(w as u32);
+            let mut  digit = numerator/denominator as u16;
+            numerator = numerator - digit * denominator as u16;
+            if digit > 9 {
+                digit = digit % 10
+            }
+            hprintln!("w: {}, numerator: {}, denominator: {}, digit: {}", w, numerator, denominator, digit);
+            let digit_image = ImageManager::small_digit(digit as u8);
+            Image::new(&digit_image, Point::new(current_x, position.y)).draw(display).unwrap();
+            current_x += 16;
+        }
     }
 }
