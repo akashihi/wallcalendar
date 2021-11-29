@@ -1,5 +1,4 @@
 use celestial::{day_of_the_year, moon_phase, sunrise, sunset};
-use cortex_m_semihosting::hprintln;
 use embedded_graphics::image::Image;
 use embedded_graphics::prelude::*;
 use epd_waveshare::epd5in83b_v2::Display5in83;
@@ -8,7 +7,7 @@ use crate::{ImageManager, Watch};
 pub struct Renderer;
 
 impl Renderer {
-    pub fn render_side_a(display: &mut Display5in83, watch: &Watch) {
+    pub fn render_side_a(display: &mut Display5in83, watch: &Watch, temperature: f32, pressure: f32, humidity: f32) {
         //Draw daily info
         let day_of_year = day_of_the_year(watch.date().date, watch.date().month, watch.date().year);
         let a_side_image = ImageManager::a_side(day_of_year - 1); //Image indices start with 0, but days start with 1
@@ -25,6 +24,11 @@ impl Renderer {
         let moon_phase = moon_phase(watch.date().date, watch.date().month, watch.date().year);
         let moon_phase_image = ImageManager::moon(moon_phase - 1);
         Image::new(&moon_phase_image, Point::new(112, 486)).draw(display).unwrap();
+
+        //Render air condition
+        Self::render_small_digits(display, temperature as u16, Point::new(336, 490), 2);
+        Self::render_small_digits(display, (pressure/133.3) as u16, Point::new(336, 520), 3);
+        Self::render_small_digits(display, humidity as u16, Point::new(336, 550), 2);
     }
 
     fn render_date(display: &mut Display5in83, watch: &Watch) {
@@ -79,7 +83,6 @@ impl Renderer {
             if digit > 9 {
                 digit = digit % 10
             }
-            hprintln!("w: {}, numerator: {}, denominator: {}, digit: {}", w, numerator, denominator, digit);
             let digit_image = ImageManager::small_digit(digit as u8);
             Image::new(&digit_image, Point::new(current_x, position.y)).draw(display).unwrap();
             current_x += 16;

@@ -60,17 +60,18 @@ fn main() -> ! {
             let watch = Watch::new(p.RTC, &mut rcc.apb1r1, &mut rcc.bdcr, &mut pwr.cr1, &mut exti, p.GPIOD, p.USART2, &mut rcc.ahb2, clocks.clone());
 
             let (mut bme280, mut epd_spi, mut epd) = board::init(p.GPIOB, p.I2C1, p.SPI1, &mut rcc.ahb2, &mut rcc.apb1r1, &mut rcc.apb2, clocks.clone(), &delay);
+            let air_condition = bme280.measure().unwrap();
             //epd.clear_frame(&mut epd_spi, &mut delay.share());
             let mut display = Display5in83::default();
             display.set_rotation(DisplayRotation::Rotate90);
 
-            Renderer::render_side_a(&mut display, &watch);
+            Renderer::render_side_a(&mut display, &watch, air_condition.temperature, air_condition.pressure, air_condition.humidity);
 
             epd.update_color_frame(&mut epd_spi, display.bw_buffer(), display.chromatic_buffer()).unwrap();
             epd.display_frame(&mut epd_spi, &mut delay.share()).unwrap();
             epd.sleep(&mut epd_spi, &mut delay.share()).unwrap();
             loop{
-                /*let air_condition = bme280.measure().unwrap();
+                /*
                 hprintln!("Temperature: {}, Humidity: {}, Pressure: {}", air_condition.temperature, air_condition.humidity, air_condition.pressure);*/
             }
         }
