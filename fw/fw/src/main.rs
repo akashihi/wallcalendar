@@ -10,10 +10,6 @@ use panic_semihosting as _;
 
 use board::hal;
 use cortex_m_rt::entry;
-use cortex_m_semihosting::hprintln;
-use embedded_graphics::Drawable;
-use embedded_graphics::image::Image;
-use embedded_graphics::prelude::{DrawTarget, PixelIteratorExt, Point, Primitive, Size};
 use epd_waveshare::epd5in83b_v2::Display5in83;
 use board::hal::delay::Delay;
 use board::hal::prelude::*;
@@ -32,6 +28,7 @@ mod gps;
 mod bin_image;
 mod image_manager;
 mod renderer;
+mod holiday;
 
 #[global_allocator]
 static ALLOCATOR: CortexMHeap = CortexMHeap::empty();

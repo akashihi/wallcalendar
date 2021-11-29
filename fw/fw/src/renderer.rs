@@ -2,7 +2,9 @@ use celestial::{day_of_the_year, moon_phase, sunrise, sunset};
 use embedded_graphics::image::Image;
 use embedded_graphics::prelude::*;
 use epd_waveshare::epd5in83b_v2::Display5in83;
-use crate::{ImageManager, Watch};
+use board::hal::datetime::Date;
+use crate::{BinImage, ImageManager, Watch};
+use crate::holiday::is_holiday;
 
 pub struct Renderer;
 
@@ -40,24 +42,24 @@ impl Renderer {
 
     fn render_date(display: &mut Display5in83, watch: &Watch) {
         //Draw day of week
-        let dow_image = ImageManager::weekday((watch.date().day - 1) as u8); //Same index shift as for day of year
+        let dow_image = Self::mark_holiday(ImageManager::weekday((watch.date().day - 1) as u8), watch.date()); //Same index shift as for day of year
         Image::new(&dow_image, Point::new(274, 448)).draw(display).unwrap();
 
         //Draw month
-        let month_image = ImageManager::month((watch.date().month - 1) as u8); //Same index shift as for day of year
+        let month_image = Self::mark_holiday(ImageManager::month((watch.date().month - 1) as u8), watch.date()); //Same index shift as for day of year
         Image::new(&month_image, Point::new(20, 448)).draw(display).unwrap();
 
         //Draw day
         if watch.date().date < 10 {
             //Simple single digit case
-            let day_image = ImageManager::big_digit((watch.date().date) as u8);
+            let day_image = Self::mark_holiday(ImageManager::big_digit((watch.date().date) as u8), watch.date());
             Image::new(&day_image, Point::new(195, 478)).draw(display).unwrap();
         } else {
             //Two digits are slightly more complex
             let left_digit = watch.date().date / 10;
             let right_digit = watch.date().date % 10;
-            let left_day_image = ImageManager::big_digit((left_digit) as u8);
-            let right_day_image = ImageManager::big_digit((right_digit) as u8);
+            let left_day_image = Self::mark_holiday(ImageManager::big_digit((left_digit) as u8), watch.date());
+            let right_day_image = Self::mark_holiday(ImageManager::big_digit((right_digit) as u8), watch.date());
             Image::new(&left_day_image, Point::new(150, 478)).draw(display).unwrap();
             Image::new(&right_day_image, Point::new(234, 478)).draw(display).unwrap();
         }
@@ -93,6 +95,14 @@ impl Renderer {
             let digit_image = ImageManager::small_digit(digit as u8);
             Image::new(&digit_image, Point::new(current_x, position.y)).draw(display).unwrap();
             current_x += 16;
+        }
+    }
+
+    fn mark_holiday(source: BinImage, date: Date) -> BinImage {
+        if date.day == 6 || date.day == 7 || is_holiday(date){
+            source.force_chromatic()
+        } else {
+            source
         }
     }
 }

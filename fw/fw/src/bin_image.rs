@@ -11,6 +11,7 @@ pub struct BinImage {
     size: Size,
     bw_plane: Vec<u8>,
     rw_plane: Option<Vec<u8>>,
+    force_chromatic: bool
 }
 
 fn inflate(size: Size, data: &[u8]) -> Vec<u8>{
@@ -27,7 +28,12 @@ impl BinImage {
     pub fn from_slice(size: Size, bw_data: &[u8], rw_data: Option<& [u8]>) -> BinImage {
         let bw_plane = inflate(size, bw_data);
         let rw_plane = rw_data.map(|data| inflate(size, data));
-        BinImage{size, bw_plane, rw_plane}
+        BinImage{size, bw_plane, rw_plane, force_chromatic: false}
+    }
+
+    pub fn force_chromatic(mut self) -> Self {
+        self.force_chromatic = true;
+        self
     }
 }
 
@@ -72,7 +78,11 @@ impl<'a> Iterator for BinImageIterator<'a> {
             let bw_color = if self.image.bw_plane[bit_pixel_offset].get_bit(bit_pixel_position) {
                 TriColor::White
             } else {
-                TriColor::Black
+                if self.image.force_chromatic {
+                    TriColor::Chromatic
+                } else {
+                    TriColor::Black
+                }
             };
             let color = self.image.rw_plane.as_ref().map(|rw_plane| rw_plane[bit_pixel_offset].get_bit(bit_pixel_position))
                 .map(|is_red| if ! is_red { TriColor::Chromatic} else { bw_color}).unwrap_or(bw_color);
