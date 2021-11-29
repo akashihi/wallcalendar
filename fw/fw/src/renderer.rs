@@ -31,6 +31,13 @@ impl Renderer {
         Self::render_small_digits(display, humidity as u16, Point::new(336, 550), 2);
     }
 
+    pub fn render_side_b(display: &mut Display5in83, watch: &Watch) {
+        //Draw daily info
+        let day_of_year = day_of_the_year(watch.date().date, watch.date().month, watch.date().year);
+        let b_side_image = ImageManager::b_side(day_of_year - 1); //Image indices start with 0, but days start with 1
+        Image::new(&b_side_image, Point::zero()).draw(display).unwrap();
+    }
+
     fn render_date(display: &mut Display5in83, watch: &Watch) {
         //Draw day of week
         let dow_image = ImageManager::weekday((watch.date().day - 1) as u8); //Same index shift as for day of year

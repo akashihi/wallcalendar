@@ -66,6 +66,7 @@ fn main() -> ! {
             display.set_rotation(DisplayRotation::Rotate90);
 
             Renderer::render_side_a(&mut display, &watch, air_condition.temperature, air_condition.pressure, air_condition.humidity);
+            //Renderer::render_side_b(&mut display, &watch);
 
             epd.update_color_frame(&mut epd_spi, display.bw_buffer(), display.chromatic_buffer()).unwrap();
             epd.display_frame(&mut epd_spi, &mut delay.share()).unwrap();
