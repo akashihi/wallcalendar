@@ -58,7 +58,7 @@ impl Gps {
         usart.listen(Event::Rxne);
         let (_, rx) = usart.split();
         ci::free(|cs| GPS_RX.borrow(cs).replace(Some(rx)));
-        en.set_high().unwrap_or_default(); // Disable GPS receiver
+        en.set_high(); // Disable GPS receiver
         Gps {en}
     }
 
@@ -66,7 +66,7 @@ impl Gps {
         let mut date = None;
         let mut pos = None;
         unsafe { NVIC::unmask(interrupt::USART2); }
-        self.en.set_low().unwrap_or_default(); // Enable GPS receiver
+        self.en.set_low(); // Enable GPS receiver
         loop {
             if MESSAGES_SEEN.load(Ordering::Relaxed) > 540 { //We should receive one RMC message per second, so after 540 messages(=9 minutes) we time out
                 break;
@@ -86,7 +86,7 @@ impl Gps {
             }
             cortex_m::asm::wfi(); //Sleep till next char arrives
         }
-        self.en.set_high().unwrap_or_default(); // Disable GPS receiver
+        self.en.set_high(); // Disable GPS receiver
         NVIC::mask(interrupt::USART2);
         (date, pos)
     }
