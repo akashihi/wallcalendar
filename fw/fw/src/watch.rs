@@ -102,12 +102,12 @@ impl Watch {
         }
 
         //Set alarm for next wakeup
-        if !rtc.check_interrupt(Event::WakeupTimer, true) {
+        /*if !rtc.check_interrupt(Event::WakeupTimer, true) {
             //Ok, we didn't woke up because of the RTC WakeUp event, need to set it up for the
             //next wake up
             rtc.listen(exti, Event::WakeupTimer);
             rtc.wakeup_timer().start(10.minutes());
-        }
+        }*/
 
         //Get position, stored in BPK1 (lon) and bkp2 (lon)
         //Coordinates are stored as integers, multiplied by 10^6, which gives good enough resolution

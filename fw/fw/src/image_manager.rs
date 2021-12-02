@@ -1,5 +1,5 @@
 use embedded_graphics::prelude::Size;
-use crate::BinImage;
+use crate::bin_image::BinImage;
 
 const IMAGES: &'static [u8] = include_bytes!("../../../bin2flash/spiflash_debug.bin");
 

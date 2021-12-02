@@ -3,8 +3,10 @@ use embedded_graphics::image::Image;
 use embedded_graphics::prelude::*;
 use epd_waveshare::epd5in83b_v2::Display5in83;
 use board::hal::datetime::Date;
-use crate::{BinImage, ImageManager, Watch};
+use crate::bin_image::BinImage;
 use crate::holiday::is_holiday;
+use crate::image_manager::ImageManager;
+use crate::Watch;
 
 pub struct Renderer;
 
