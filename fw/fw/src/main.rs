@@ -60,14 +60,19 @@ fn main() -> ! {
             let (mut bme280, mut epd_spi, mut epd) = board::init(p.GPIOB, p.I2C1, p.SPI1, &mut rcc.ahb2, &mut rcc.apb1r1, &mut rcc.apb2, clocks.clone(), &delay);
             let air_condition = bme280.measure().unwrap();
             //epd.clear_frame(&mut epd_spi, &mut delay.share());
-            /*let mut display = Display5in83::default();
+            let mut display = Display5in83::default();
             display.set_rotation(DisplayRotation::Rotate90);
 
-            Renderer::render_side_a(&mut display, &watch, air_condition.temperature, air_condition.pressure, air_condition.humidity);
-            //Renderer::render_side_b(&mut display, &watch);
+            //Check if we woke up due to the button press and draw B side in that case
+            let side = unsafe { hal::pac::Peripherals::steal().PWR.sr1.read().cwuf1().bit_is_clear() };
+            if side {
+                Renderer::render_side_a(&mut display, &watch, air_condition.temperature, air_condition.pressure, air_condition.humidity);
+            } else {
+                Renderer::render_side_b(&mut display, &watch);
+            }
 
             epd.update_color_frame(&mut epd_spi, display.bw_buffer(), display.chromatic_buffer()).unwrap();
-            epd.display_frame(&mut epd_spi, &mut delay.share()).unwrap();*/
+            epd.display_frame(&mut epd_spi, &mut delay.share()).unwrap();
             //epd.sleep(&mut epd_spi, &mut delay.share()).unwrap();
 
             //Go to the shutdown mode
@@ -77,12 +82,6 @@ fn main() -> ! {
                 hal::pac::Peripherals::steal().PWR.cr3.write(|w| w.ewf().set_bit().ewup1().set_bit());
                 hal::pac::Peripherals::steal().PWR.scr.write(|w| w.wuf1().set_bit().wuf2().set_bit().wuf3().set_bit().wuf4().set_bit().wuf5().set_bit().sbf().set_bit());
                 hal::pac::Peripherals::steal().PWR.cr1.modify(|_, w| w.lpms().bits(0b111))
-            }
-            unsafe {
-                hprintln!("SCB {:#032b}",cp.SCB.scr.read());
-                hprintln!("CR1 {:#032b}",hal::pac::Peripherals::steal().PWR.cr1.read().bits());
-                hprintln!("CR3 {:#032b}",hal::pac::Peripherals::steal().PWR.cr3.read().bits());
-                hprintln!("SR1 {:#032b}",hal::pac::Peripherals::steal().PWR.sr1.read().bits());
             }
             dsb();
             wfi();
