@@ -1,4 +1,6 @@
 use celestial::{day_of_the_year, moon_phase, sunrise, sunset};
+use chrono::{DateTime, Timelike, TimeZone, Utc};
+use chrono_tz::Europe::Helsinki;
 use embedded_graphics::image::Image;
 use embedded_graphics::prelude::*;
 use epd_waveshare::epd5in83b_v2::Display5in83;
@@ -70,17 +72,16 @@ impl Renderer {
         Self::render_small_digits(display, watch.date().year as u16, Point::new(6, 624), 4);
 
         //Draw sunrise/sunset
+        //TODO use timezone polygons and current location to determine actual timezone
         if let Some(sunrise) = sunrise(watch.date().date, watch.date().month, watch.date().year, watch.lon(), watch.lat()) {
-            let hours = sunrise/60;
-            let minutes = sunrise-(hours*60);
-            Self::render_small_digits(display, hours, Point::new(66, 524), 2);
-            Self::render_small_digits(display, minutes, Point::new(110, 524), 2);
+            let local_time = Utc.ymd(watch.date().year as i32, watch.date().month, watch.date().date).and_hms((sunrise/60) as u32, (sunrise%60) as u32, 0).with_timezone(&Helsinki);
+            Self::render_small_digits(display, local_time.hour() as u16, Point::new(66, 524), 2);
+            Self::render_small_digits(display, local_time.minute() as u16, Point::new(110, 524), 2);
         }
         if let Some(sunset) = sunset(watch.date().date, watch.date().month, watch.date().year, watch.lon(), watch.lat()) {
-            let hours = sunset/60;
-            let minutes = sunset-(hours*60);
-            Self::render_small_digits(display, hours, Point::new(66, 550), 2);
-            Self::render_small_digits(display, minutes, Point::new(110, 550), 2);
+            let local_time = Utc.ymd(watch.date().year as i32, watch.date().month, watch.date().date).and_hms((sunset/60) as u32, (sunset%60) as u32, 0).with_timezone(&Helsinki);
+            Self::render_small_digits(display, local_time.hour() as u16, Point::new(66, 550), 2);
+            Self::render_small_digits(display, local_time.minute() as u16, Point::new(110, 550), 2);
         }
     }
 

@@ -6,12 +6,10 @@ extern crate alloc;
 
 use core::alloc::Layout;
 use alloc_cortex_m::CortexMHeap;
-use cortex_m::asm::{dsb, wfi};
 use panic_semihosting as _;
 
 use board::hal;
 use cortex_m_rt::entry;
-use cortex_m_semihosting::hprintln;
 use epd_waveshare::epd5in83b_v2::Display5in83;
 use board::hal::delay::Delay;
 use board::hal::prelude::*;
@@ -52,16 +50,21 @@ fn main() -> ! {
             // Configure lower power mode
             pwr.set_power_range(VosRange::LowPower, &clocks);
             pwr.low_power_run(&clocks);
+
+            // Get access to the interrupts
             let mut exti = p.EXTI;
 
             //Configure systick as a delay provider
             let systick = cp.SYST;
             let delay = SharedDelay::new(Delay::new(systick, clocks));
 
+            //Get date/time information from the RTC
             let watch = Watch::new(p.RTC, &mut rcc.apb1r1, &mut rcc.bdcr, &mut pwr.cr1, &mut exti, p.GPIOD, p.USART2, &mut rcc.ahb2, clocks.clone());
 
+            //Configure board
             let (mut bme280, mut epd_spi, mut epd) = board::init(p.GPIOB, p.I2C1, p.SPI1, &mut rcc.ahb2, &mut rcc.apb1r1, &mut rcc.apb2, clocks.clone(), &delay);
-            let air_condition = bme280.measure().unwrap();
+
+            //Configure display
             //epd.clear_frame(&mut epd_spi, &mut delay.share());
             let mut display = Display5in83::default();
             display.set_rotation(DisplayRotation::Rotate90);
@@ -70,9 +73,11 @@ fn main() -> ! {
             if let Some(WakeUpSource::WKUP1) = pwr.read_wakeup_reason() {
                 Renderer::render_side_b(&mut display, &watch);
             } else {
+                let air_condition = bme280.measure().unwrap();
                 Renderer::render_side_a(&mut display, &watch, air_condition.temperature, air_condition.pressure, air_condition.humidity);
             }
 
+            //Render display data
             epd.update_color_frame(&mut epd_spi, display.bw_buffer(), display.chromatic_buffer()).unwrap();
             epd.display_frame(&mut epd_spi, &mut delay.share()).unwrap();
             epd.sleep(&mut epd_spi, &mut delay.share()).unwrap();
