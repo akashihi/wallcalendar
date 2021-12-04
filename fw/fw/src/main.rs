@@ -20,6 +20,7 @@ use crate::watch::Watch;
 use epd_waveshare::prelude::*;
 use epd_waveshare::prelude::WaveshareDisplay;
 use epd_waveshare::prelude::WaveshareThreeColorDisplay;
+use board::hal::pwr::{VosRange, WakeUpSource};
 use board::shared_delay::SharedDelay;
 use crate::renderer::Renderer;
 
@@ -46,9 +47,11 @@ fn main() -> ! {
             let mut rcc = p.RCC.constrain();
             let mut pwr = p.PWR.constrain(&mut rcc.apb1r1);
             let mut flash = p.FLASH.constrain();
-            let clocks = rcc.cfgr.msi(MsiFreq::RANGE4M).lse(CrystalBypass::Disable, ClockSecuritySystem::Disable).freeze(&mut flash.acr, &mut pwr);
-            //We need to access PWR after clock freeze to switch into low power run mode
-            //unsafe {hal::pac::Peripherals::steal().PWR.cr1.modify(|_, w| w.lpr().set_bit().vos().bits(0b10))};
+            let clocks = rcc.cfgr.msi(MsiFreq::RANGE2M).lse(CrystalBypass::Disable, ClockSecuritySystem::Disable).freeze(&mut flash.acr, &mut pwr);
+
+            // Configure lower power mode
+            pwr.set_power_range(VosRange::LowPower, &clocks);
+            pwr.low_power_run(&clocks);
             let mut exti = p.EXTI;
 
             //Configure systick as a delay provider
@@ -64,29 +67,18 @@ fn main() -> ! {
             display.set_rotation(DisplayRotation::Rotate90);
 
             //Check if we woke up due to the button press and draw B side in that case
-            let side = unsafe { hal::pac::Peripherals::steal().PWR.sr1.read().cwuf1().bit_is_clear() };
-            if side {
-                Renderer::render_side_a(&mut display, &watch, air_condition.temperature, air_condition.pressure, air_condition.humidity);
-            } else {
+            if let Some(WakeUpSource::WKUP1) = pwr.read_wakeup_reason() {
                 Renderer::render_side_b(&mut display, &watch);
+            } else {
+                Renderer::render_side_a(&mut display, &watch, air_condition.temperature, air_condition.pressure, air_condition.humidity);
             }
 
             epd.update_color_frame(&mut epd_spi, display.bw_buffer(), display.chromatic_buffer()).unwrap();
             epd.display_frame(&mut epd_spi, &mut delay.share()).unwrap();
-            //epd.sleep(&mut epd_spi, &mut delay.share()).unwrap();
+            epd.sleep(&mut epd_spi, &mut delay.share()).unwrap();
 
             //Go to the shutdown mode
-            cp.SCB.set_sleepdeep();
-            //Configure wakeup sources
-            unsafe {
-                hal::pac::Peripherals::steal().PWR.cr3.write(|w| w.ewf().set_bit().ewup1().set_bit());
-                hal::pac::Peripherals::steal().PWR.scr.write(|w| w.wuf1().set_bit().wuf2().set_bit().wuf3().set_bit().wuf4().set_bit().wuf5().set_bit().sbf().set_bit());
-                hal::pac::Peripherals::steal().PWR.cr1.modify(|_, w| w.lpms().bits(0b111))
-            }
-            dsb();
-            wfi();
-            loop{
-            }
+            pwr.shutdown(&[WakeUpSource::Internal, WakeUpSource::WKUP1], &mut cp.SCB)
         }
     }
     loop{}

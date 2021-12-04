@@ -13,8 +13,8 @@ bme280 = "0.2.1"
 
 [dependencies.stm32l4xx-hal]
 version = "*"
-git = "https://github.com/stm32-rs/stm32l4xx-hal"
-branch = "master"
+git = "https://github.com/akashihi/stm32l4xx-hal"
+branch = "lpsm"
 features = ["stm32l4x6", "rt"]
 
 [dependencies.epd-waveshare]
