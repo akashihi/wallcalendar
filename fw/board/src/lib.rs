@@ -168,7 +168,7 @@ pub fn init<'a, D: DelayMs<u8> + DelayUs<u16>>(
         (epd_sck, epd_miso, epd_mosi),
         SPI_MODE,
         400.khz(),
-        clocks.clone(),
+        clocks,
         apb2,
     );
 

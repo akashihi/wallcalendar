@@ -46,7 +46,7 @@ fn USART2() {
                         // too much time reading garbage
                         MESSAGES_SEEN.fetch_add(1, Ordering::Relaxed);
                     }
-                    if let Err(_) = buffer.push(byte as char) {
+                    if buffer.push(byte as char).is_err() {
                         //Unable to proceed, let's clear it
                         buffer.clear()
                     }

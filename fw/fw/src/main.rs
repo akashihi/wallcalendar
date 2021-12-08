@@ -75,7 +75,7 @@ fn main() -> ! {
                 p.GPIOD,
                 p.USART2,
                 &mut rcc.ahb2,
-                clocks.clone(),
+                clocks,
             );
 
             //Configure board
@@ -90,7 +90,7 @@ fn main() -> ! {
                 &mut rcc.ahb3,
                 &mut rcc.apb1r1,
                 &mut rcc.apb2,
-                clocks.clone(),
+                clocks,
                 &delay,
             );
 
@@ -104,8 +104,7 @@ fn main() -> ! {
             #[cfg(feature = "debug-images")]
             let image_manager = ImageManager::new(&IMAGES);
             #[cfg(feature = "external-images")]
-            let images =
-                unsafe { core::slice::from_raw_parts(0x90_000_000 as *const u8, 16777216) };
+            let images = unsafe { core::slice::from_raw_parts(0x9000_0000 as *const u8, 16777216) };
             #[cfg(feature = "external-images")]
             let image_manager = ImageManager::new(images);
 

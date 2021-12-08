@@ -103,7 +103,7 @@ impl Watch {
         let (date, time) = rtc.get_date_time();
 
         //Schedule sync for the next run if needed
-        if date.day == 7 && time.hours > 05 && time.hours < 06 {
+        if date.day == 7 && time.hours > 5 && time.hours < 6 {
             if flag_value == 0xBEEF {
                 rtc.write_backup_register(0, 0xC0FE_u32); // Request sync for the next run
             }

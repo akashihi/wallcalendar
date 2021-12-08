@@ -124,13 +124,7 @@ impl Renderer {
         }
 
         //Draw year
-        Self::render_small_digits(
-            &self,
-            display,
-            watch.date().year as u16,
-            Point::new(6, 624),
-            4,
-        );
+        self.render_small_digits(display, watch.date().year as u16, Point::new(6, 624), 4);
 
         //Draw sunrise/sunset
         //TODO use timezone polygons and current location to determine actual timezone
@@ -184,9 +178,9 @@ impl Renderer {
         for w in (0..width).rev() {
             let denominator = 10_u32.pow(w as u32);
             let mut digit = numerator / denominator as u16;
-            numerator = numerator - digit * denominator as u16;
+            numerator -= digit * denominator as u16;
             if digit > 9 {
-                digit = digit % 10
+                digit %= 10
             }
             let digit_image = self.image_manager.small_digit(digit as u8);
             Image::new(&digit_image, Point::new(current_x, position.y))

@@ -18,7 +18,7 @@ fn inflate(size: Size, data: &[u8]) -> Vec<u8> {
     let plane_size = (size.width / 8 * size.height) as usize;
     let mut plane = Vec::with_capacity(plane_size);
     plane.resize(plane_size, 0x00);
-    let reader = SliceReader::new(&data);
+    let reader = SliceReader::new(data);
     let writer = SliceWriter::new(&mut plane);
     MyLzss::decompress(reader, writer).unwrap();
     plane
@@ -91,12 +91,10 @@ impl<'a> Iterator for BinImageIterator<'a> {
             let bit_pixel_position = (self.current_pixel % 8) as usize;
             let bw_color = if self.image.bw_plane[bit_pixel_offset].get_bit(bit_pixel_position) {
                 TriColor::White
+            } else if self.image.force_chromatic {
+                TriColor::Chromatic
             } else {
-                if self.image.force_chromatic {
-                    TriColor::Chromatic
-                } else {
-                    TriColor::Black
-                }
+                TriColor::Black
             };
             let color = self
                 .image
