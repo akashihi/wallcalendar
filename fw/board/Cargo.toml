@@ -20,7 +20,7 @@ features = ["stm32l4x6", "rt"]
 [dependencies.epd-waveshare]
 version = "*"
 git = "https://github.com/akashihi/epd-waveshare"
-branch = "main"
+branch = "5in83"
 
 # Allows to use 'cargo fix'
 [lib]

@@ -29,7 +29,7 @@ celestial = { path = "../../celestial",default-features = false }
 version = "*"
 git = "https://github.com/akashihi/epd-waveshare"
 #path = "f:/epd-waveshare"
-branch = "main"
+branch = "5in83"
 
 # Allows to use 'cargo fix'
 [[bin]]

@@ -51,7 +51,7 @@ impl ImageDrawable for BinImage {
     }
 
     fn draw_sub_image<D>(&self, target: &mut D, area: &Rectangle) -> Result<(), D::Error> where D: DrawTarget<Color=Self::Color> {
-        todo!()
+        self.draw(&mut target.translated(-area.top_left).clipped(area))
     }
 }
 

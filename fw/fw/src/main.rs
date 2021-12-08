@@ -16,7 +16,6 @@ use board::hal::prelude::*;
 use board::hal::rcc::{ClockSecuritySystem, CrystalBypass, MsiFreq};
 use crate::watch::Watch;
 use epd_waveshare::prelude::*;
-use epd_waveshare::prelude::WaveshareDisplay;
 use epd_waveshare::prelude::WaveshareThreeColorDisplay;
 use board::hal::pwr::{VosRange, WakeUpSource};
 use board::shared_delay::SharedDelay;
@@ -36,7 +35,7 @@ static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
 fn main() -> ! {
     //Configure heap for image unpacking
     let heap_start = cortex_m_rt::heap_start() as usize;
-    let heap_size = 72*1024; // 72kb, which should be enough for all the images (55608 bytes max) plus template image (13680 bytes)
+    let heap_size = 72 * 1024; // 72kb, which should be enough for all the images (55608 bytes max) plus template image (13680 bytes)
     unsafe { ALLOCATOR.init(heap_start, heap_size) } //Heap should be in the SRAM section
 
     if let Some(mut cp) = cortex_m::Peripherals::take() {
@@ -72,21 +71,37 @@ fn main() -> ! {
             //Check if we woke up due to the button press and draw B side in that case
             if let Some(WakeUpSource::WKUP1) = pwr.read_wakeup_reason() {
                 Renderer::render_side_b(&mut display, &watch);
+                epd.update_color_frame(&mut epd_spi, display.bw_buffer(), display.chromatic_buffer()).unwrap();
+                epd.display_frame(&mut epd_spi, &mut delay.share()).unwrap();
             } else {
                 let air_condition = bme280.measure().unwrap();
                 Renderer::render_side_a(&mut display, &watch, air_condition.temperature, air_condition.pressure, air_condition.humidity);
+                if watch.time().minutes >=0 && watch.time().minutes <= 10 {
+                    // Full update in the beginning of the hour
+                    epd.update_color_frame(&mut epd_spi, display.bw_buffer(), display.chromatic_buffer()).unwrap();
+                    epd.display_frame(&mut epd_spi, &mut delay.share()).unwrap();
+                } else {
+                    //Partial update
+                    let mut partial_buf: [u8; 560] = [0; 560];
+                    let mut partial_but_index = 0;
+                    for y in 336..(336 + 56) {
+                        for x in 20..(20 + 10) {
+                            partial_buf[partial_but_index] = display.bw_buffer()[y * x + x];
+                            partial_but_index += 1;
+                        }
+                    }
+                    epd.update_partial_frame(&mut epd_spi, &partial_buf, 160, 336, 80, 56);
+                }
             }
 
-            //Render display data
-            epd.update_color_frame(&mut epd_spi, display.bw_buffer(), display.chromatic_buffer()).unwrap();
-            epd.display_frame(&mut epd_spi, &mut delay.share()).unwrap();
+            //Turn off the screen
             epd.sleep(&mut epd_spi, &mut delay.share()).unwrap();
 
             //Go to the shutdown mode
             pwr.shutdown(&[WakeUpSource::Internal, WakeUpSource::WKUP1], &mut cp.SCB)
         }
     }
-    loop{}
+    loop {}
 }
 
 #[alloc_error_handler]
