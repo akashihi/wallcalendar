@@ -5,23 +5,33 @@
 //! * Provides wakeup event from the RTC
 //! * Provides position information from the GPS
 
+use crate::gps::Gps;
 use board::hal::datetime::{Date, Time, U32Ext};
 use board::hal::hal::timer::CountDown;
 use board::hal::pac::{GPIOD, RTC, USART2};
 use board::hal::pwr::CR1;
-use board::hal::rcc::{AHB2, APB1R1, BDCR, Clocks};
+use board::hal::rcc::{Clocks, AHB2, APB1R1, BDCR};
 use board::hal::rtc::{Event, Rtc, RtcConfig};
-use crate::gps::Gps;
 
 pub struct Watch {
     date: Date,
     time: Time,
     lon: f32,
-    lat: f32
+    lat: f32,
 }
 
 impl Watch {
-    pub fn new(rtc_periphery: RTC, apb1r1: &mut APB1R1, bdcr: &mut BDCR, pwrcr1: &mut CR1, exti: &mut board::hal::pac::EXTI, gpiod: GPIOD, usart2: USART2, ahb2: &mut AHB2, clocks: Clocks) -> Self {
+    pub fn new(
+        rtc_periphery: RTC,
+        apb1r1: &mut APB1R1,
+        bdcr: &mut BDCR,
+        pwrcr1: &mut CR1,
+        exti: &mut board::hal::pac::EXTI,
+        gpiod: GPIOD,
+        usart2: USART2,
+        ahb2: &mut AHB2,
+        clocks: Clocks,
+    ) -> Self {
         // Get RTC
         let rtc_config = RtcConfig::default();
         let mut rtc = Rtc::rtc(rtc_periphery, apb1r1, bdcr, pwrcr1, rtc_config);
@@ -40,11 +50,11 @@ impl Watch {
             //before sync
             //Default timestamp is 2022 Jan 01 00:00:00
             //Default location is Helsinki
-            let rtc_date = Date{
+            let rtc_date = Date {
                 day: 6,
                 date: 1,
                 month: 1,
-                year: 2022
+                year: 2022,
             };
 
             let rtc_time = Time {
@@ -52,26 +62,27 @@ impl Watch {
                 minutes: 00,
                 seconds: 00,
                 micros: 0,
-                daylight_savings: false
+                daylight_savings: false,
             };
             rtc.set_date_time(rtc_date, rtc_time);
             rtc.write_backup_register(1, 24140159);
             rtc.write_backup_register(2, 60058425);
         }
-        /*if flag_value != 0xBEEF && flag_value != 0xC0CA { //Any other value means that sync is needed
+        if flag_value != 0xBEEF && flag_value != 0xC0CA {
+            //Any other value means that sync is needed
             let (gps_usart, gps_en) = board::init_uart(gpiod, usart2, ahb2, apb1r1, clocks);
             let mut gps = Gps::new(gps_usart, gps_en);
             let (gps_date, gps_pos) = gps.sync_date_time();
-            if let Some ((gps_d, gps_t)) = gps_date {
+            if let Some((gps_d, gps_t)) = gps_date {
                 //We've seen at least time, that's enough
                 rtc.write_backup_register(0, 0xC0CA_u32); // Mark as synced
 
                 let weekday = celestial::weekday(gps_d.date, gps_d.month, gps_d.year);
-                let rtc_date = Date{
+                let rtc_date = Date {
                     day: weekday as u32,
                     date: gps_d.date,
                     month: gps_d.month,
-                    year: gps_d.year
+                    year: gps_d.year,
                 };
 
                 let rtc_time = Time {
@@ -79,7 +90,7 @@ impl Watch {
                     minutes: gps_t.minute,
                     seconds: gps_t.second,
                     micros: 0,
-                    daylight_savings: false
+                    daylight_savings: false,
                 };
                 rtc.set_date_time(rtc_date, rtc_time);
             }
@@ -88,7 +99,7 @@ impl Watch {
                 rtc.write_backup_register(1, g_p.lon as u32);
                 rtc.write_backup_register(2, g_p.lat as u32);
             }
-        }*/
+        }
         let (date, time) = rtc.get_date_time();
 
         //Schedule sync for the next run if needed
@@ -116,9 +127,14 @@ impl Watch {
         let lat_i = rtc.read_backup_register(2).unwrap_or(0) as i32;
 
         let lon = lon_i as f32 / 1_000_000.0;
-        let lat = lat_i as f32/ 1_000_000.0;
+        let lat = lat_i as f32 / 1_000_000.0;
 
-        Watch{date, time, lon, lat}
+        Watch {
+            date,
+            time,
+            lon,
+            lat,
+        }
     }
 
     pub fn date(&self) -> Date {
