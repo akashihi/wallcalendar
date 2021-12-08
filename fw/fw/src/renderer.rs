@@ -32,9 +32,7 @@ impl Renderer {
         Image::new(&moon_phase_image, Point::new(112, 486)).draw(display).unwrap();
 
         //Render air condition
-        Self::render_small_digits(display, temperature as u16, Point::new(336, 490), 2);
-        Self::render_small_digits(display, (pressure/133.3) as u16, Point::new(336, 520), 3);
-        Self::render_small_digits(display, humidity as u16, Point::new(336, 550), 2);
+        Self::render_air_condition(display, temperature, pressure, humidity);
     }
 
     pub fn render_side_b(display: &mut Display5in83, watch: &Watch) {
@@ -42,6 +40,12 @@ impl Renderer {
         let day_of_year = day_of_the_year(watch.date().date, watch.date().month, watch.date().year);
         let b_side_image = ImageManager::b_side(day_of_year - 1); //Image indices start with 0, but days start with 1
         Image::new(&b_side_image, Point::zero()).draw(display).unwrap();
+    }
+
+    pub fn render_air_condition(display: &mut Display5in83, temperature: f32, pressure: f32, humidity: f32) {
+        Self::render_small_digits(display, temperature as u16, Point::new(336, 490), 2);
+        Self::render_small_digits(display, (pressure/133.3) as u16, Point::new(336, 520), 3);
+        Self::render_small_digits(display, humidity as u16, Point::new(336, 550), 2);
     }
 
     fn render_date(display: &mut Display5in83, watch: &Watch) {

@@ -65,6 +65,7 @@ fn main() -> ! {
 
             //Configure display
             //epd.clear_frame(&mut epd_spi, &mut delay.share());
+
             let mut display = Display5in83::default();
             display.set_rotation(DisplayRotation::Rotate90);
 
@@ -75,13 +76,14 @@ fn main() -> ! {
                 epd.display_frame(&mut epd_spi, &mut delay.share()).unwrap();
             } else {
                 let air_condition = bme280.measure().unwrap();
-                Renderer::render_side_a(&mut display, &watch, air_condition.temperature, air_condition.pressure, air_condition.humidity);
                 if watch.time().minutes >=0 && watch.time().minutes <= 10 {
                     // Full update in the beginning of the hour
+                    Renderer::render_side_a(&mut display, &watch, air_condition.temperature, air_condition.pressure, air_condition.humidity);
                     epd.update_color_frame(&mut epd_spi, display.bw_buffer(), display.chromatic_buffer()).unwrap();
                     epd.display_frame(&mut epd_spi, &mut delay.share()).unwrap();
                 } else {
                     //Partial update
+                    Renderer::render_air_condition(&mut display,  air_condition.temperature, air_condition.pressure, air_condition.humidity);
                     let mut partial_buf: [u8; 560] = [0; 560];
                     let mut partial_but_index = 0;
                     for y in 336..(336 + 56) {
@@ -90,7 +92,7 @@ fn main() -> ! {
                             partial_but_index += 1;
                         }
                     }
-                    epd.update_partial_frame(&mut epd_spi, &partial_buf, 160, 336, 80, 56);
+                    epd.update_partial_frame(&mut epd_spi, &partial_buf, 488, 336, 80, 56);
                 }
             }
 
