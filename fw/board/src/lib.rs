@@ -13,7 +13,7 @@ use stm32l4xx_hal::gpio::{
 };
 use stm32l4xx_hal::i2c;
 use stm32l4xx_hal::i2c::I2c;
-use stm32l4xx_hal::pac::{GPIOA, GPIOB, GPIOD, GPIOE, I2C1, QUADSPI, SPI1, USART2};
+use stm32l4xx_hal::pac::{GPIOA, GPIOB, GPIOD, GPIOE, I2C1, QUADSPI, SPI1, USART1, USART2};
 use stm32l4xx_hal::rcc::{Clocks, AHB2, AHB3, APB1R1, APB2};
 use stm32l4xx_hal::serial::{Config, Serial};
 use stm32l4xx_hal::spi::Spi;
@@ -21,12 +21,17 @@ use stm32l4xx_hal::time::U32Ext;
 
 pub mod shared_delay;
 
+pub type QspiReset = Pin<Oitput<PushPull>, L8, 'A', 3>;
 pub type QspiCs = Pin<Alternate<PushPull, 10>, L8, 'A', 2>;
 pub type QspiClk = Pin<Alternate<PushPull, 10>, H8, 'B', 10>;
 pub type QspiIO3 = Pin<Alternate<PushPull, 10>, H8, 'E', 15>;
 pub type QspiIO2 = Pin<Alternate<PushPull, 10>, H8, 'E', 14>;
 pub type QspiIO1 = Pin<Alternate<PushPull, 10>, L8, 'B', 0>;
 pub type QspiIO0 = Pin<Alternate<PushPull, 10>, H8, 'E', 12>;
+
+pub type ExtRxPin = Pin<Alternate<PushPull, 7>, H8, 'A', 10>;
+pub type ExtTxPin = Pin<Alternate<PushPull, 7>, H8, 'A', 9>;
+pub type ExtUsart = Serial<USART1, (ExtTxPin, ExtRxPin)>;
 
 pub type RxPin = Pin<Alternate<PushPull, 7>, L8, 'D', 6>;
 pub type TxPin = Pin<Alternate<PushPull, 7>, L8, 'D', 5>;
@@ -72,6 +77,7 @@ pub fn init<'a, D: DelayMs<u8> + DelayUs<u16>>(
         .into_floating_input(&mut port_a.moder, &mut port_a.pupdr); //We only need to configure it for wake-up, no actual access is needed
 
     //QSPI
+    let mut qspi_reset = port_a.pa3.into_push_pull_output(&mut port_a.moder, &mut port_a.otyper);
     let _qspi_cs: QspiCs =
         port_a
             .pa2
@@ -100,6 +106,7 @@ pub fn init<'a, D: DelayMs<u8> + DelayUs<u16>>(
     /* --- HAL implementation is buggy, have to configure manually --- */
     //let qspi_config = QspiConfig::default().flash_size(23).address_size(AddressSize::Addr32Bit).qpi_mode(true); //We expect 16MB flash
     //let qspi = Qspi::new(quadspi, (qspi_clk, qspi_cs, qspi_io0, qspi_io1, qspi_io2, qspi_io3), ahb3, qspi_config);
+    qspi_reset.set_high(); //Activate flash before using it
     QUADSPI::enable(ahb3);
     unsafe {
         quadspi.ccr.modify(|_, w| {
