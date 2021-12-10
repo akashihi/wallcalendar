@@ -21,7 +21,7 @@ use stm32l4xx_hal::time::U32Ext;
 
 pub mod shared_delay;
 
-pub type QspiReset = Pin<Oitput<PushPull>, L8, 'A', 3>;
+pub type QspiReset = Pin<Output<PushPull>, L8, 'A', 3>;
 pub type QspiCs = Pin<Alternate<PushPull, 10>, L8, 'A', 2>;
 pub type QspiClk = Pin<Alternate<PushPull, 10>, H8, 'B', 10>;
 pub type QspiIO3 = Pin<Alternate<PushPull, 10>, H8, 'E', 15>;
