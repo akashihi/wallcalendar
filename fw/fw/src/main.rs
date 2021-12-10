@@ -6,7 +6,7 @@ extern crate alloc;
 
 use alloc_cortex_m::CortexMHeap;
 use core::alloc::Layout;
-use panic_semihosting as _;
+use panic_halt as _;
 
 use crate::image_manager::ImageManager;
 use crate::renderer::Renderer;
